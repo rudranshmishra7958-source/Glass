@@ -1,12 +1,12 @@
 [
   {
-    "id": 2001,
+    "id": 20001,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||facebook.net^",
+      "urlFilter": "||shareasale.com^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",
@@ -23,7 +23,237 @@
     }
   },
   {
-    "id": 2002,
+    "id": 20002,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||social-sb.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20003,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||socialprofitmachine.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20004,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||turnsocial.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20005,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||felinesocial.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20006,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||fileshareengine.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20007,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||pointsshare.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20008,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||sharedswap.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20009,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||sociallyscared.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20010,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||socialsend.net^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20011,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||profitshare.ro^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20012,
     "priority": 1,
     "action": {
       "type": "block"
@@ -46,13 +276,13 @@
     }
   },
   {
-    "id": 2003,
+    "id": 20013,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||pixel.facebook.com^",
+      "urlFilter": "||count-server.sharethis.com^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",
@@ -69,398 +299,7 @@
     }
   },
   {
-    "id": 2004,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||facebook.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2005,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||platform.twitter.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2006,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||syndication.twitter.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2007,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||analytics.tiktok.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2008,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||sc-static.net^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2009,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||tr.snapchat.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2010,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||alb.reddit.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2011,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||platform.linkedin.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2012,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||platform.instagram.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2013,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||widgets.pinterest.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2014,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||sharethis.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2015,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||addthis.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2016,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||addtoany.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2017,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||disqus.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2018,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||disquscdn.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2019,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||snap.licdn.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2020,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||px.ads.linkedin.com^",
-      "resourceTypes": [
-        "script",
-        "xmlhttprequest",
-        "image",
-        "sub_frame",
-        "ping",
-        "media",
-        "font",
-        "stylesheet",
-        "websocket",
-        "other"
-      ],
-      "domainType": "thirdParty"
-    }
-  },
-  {
-    "id": 2021,
+    "id": 20014,
     "priority": 1,
     "action": {
       "type": "block"
@@ -483,7 +322,122 @@
     }
   },
   {
-    "id": 2022,
+    "id": 20015,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||d.shareaholic.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20016,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||datasphere-sbsvc.sharethis.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20017,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||events.shareably.net^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20018,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||fcmatch.youtube.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20019,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||l.sharethis.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20020,
     "priority": 1,
     "action": {
       "type": "block"
@@ -506,13 +460,13 @@
     }
   },
   {
-    "id": 2023,
+    "id": 20021,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||analytics.pinterest.com^",
+      "urlFilter": "||recs.shareaholic.com^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",
@@ -529,13 +483,13 @@
     }
   },
   {
-    "id": 2024,
+    "id": 20022,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||ads.tiktok.com^",
+      "urlFilter": "||referrer.disqus.com^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",
@@ -552,13 +506,13 @@
     }
   },
   {
-    "id": 2025,
+    "id": 20023,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||analytics-sg.tiktok.com^",
+      "urlFilter": "||seg.sharethis.com^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",
@@ -575,13 +529,13 @@
     }
   },
   {
-    "id": 2026,
+    "id": 20024,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||app-analytics-services.com^",
+      "urlFilter": "||shared.65twenty.com^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",
@@ -598,13 +552,13 @@
     }
   },
   {
-    "id": 2027,
+    "id": 20025,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||pixel-config.reddit.com^",
+      "urlFilter": "||t.sharethis.com^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",
@@ -621,7 +575,191 @@
     }
   },
   {
-    "id": 2028,
+    "id": 20026,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||tr.snapchat.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20027,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||tr6.snapchat.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20028,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||traffic.shareaholic.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20029,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||trakksocial.googlecode.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20030,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||ws.sharethis.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20031,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||trk.pinterest.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20032,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||tiktok.tray.com.br^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20033,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||alb.reddit.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20034,
     "priority": 1,
     "action": {
       "type": "block"
@@ -644,7 +782,7 @@
     }
   },
   {
-    "id": 2029,
+    "id": 20035,
     "priority": 1,
     "action": {
       "type": "block"
@@ -667,13 +805,13 @@
     }
   },
   {
-    "id": 2030,
+    "id": 20036,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||connect.facebook.com^",
+      "urlFilter": "||intg.snapchat.com^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",
@@ -690,13 +828,13 @@
     }
   },
   {
-    "id": 2031,
+    "id": 20037,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||graph.facebook.com^",
+      "urlFilter": "||mcs-ie.tiktokw.eu^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",
@@ -713,13 +851,13 @@
     }
   },
   {
-    "id": 2032,
+    "id": 20038,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||staticxx.facebook.com^",
+      "urlFilter": "||mcs-va-useast2a.tiktokv.com^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",
@@ -736,13 +874,404 @@
     }
   },
   {
-    "id": 2033,
+    "id": 20039,
     "priority": 1,
     "action": {
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||snapchat.com^",
+      "urlFilter": "||mcs-va.tiktokv.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20040,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||mcs.tiktokv.us^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20041,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||mcs.tiktokw.us^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20042,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||mcs.us.tiktokv.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20043,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||mon.us.tiktokv.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20044,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||twitter.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20045,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||w3-reporting.reddit.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20046,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||wa.slideshare.net^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20047,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||2yqcaqbfnv.nextgen.shareablee.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20048,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||a8.sharefull.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20049,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||a8clk.afi1.emanon-sharesalon.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20050,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||a8clk.mirrorball-recurit.emanon-sharesalon.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20051,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||a8clk.shareboss.net^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20052,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||a8clk.shop.shareme.jp^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20053,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||cv-match.sharebase.jp^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20054,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||see.wasteorshare.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20055,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||b.socialdemokraterna.se^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "image",
+        "sub_frame",
+        "ping",
+        "media",
+        "font",
+        "stylesheet",
+        "websocket",
+        "other"
+      ],
+      "domainType": "thirdParty"
+    }
+  },
+  {
+    "id": 20056,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||contoso-my.sharepoint.com^",
       "resourceTypes": [
         "script",
         "xmlhttprequest",

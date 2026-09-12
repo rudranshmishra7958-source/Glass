@@ -1,0 +1,12 @@
+{
+  "name": "glass",
+  "private": true,
+  "version": "0.3.0",
+  "description": "Dev tools for the Glass Chrome extension",
+  "scripts": {
+    "icons": "node generate-icons.js"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.4"
+  }
+}

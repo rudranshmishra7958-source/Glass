@@ -28,6 +28,10 @@ const toggleEl = document.getElementById("block-toggle");
 const categoryTogglesEl = document.getElementById("category-toggles");
 const faviconEl = document.getElementById("favicon");
 const lifetimeEl = document.getElementById("lifetime");
+const trustToggleEl = document.getElementById("trust-toggle");
+const securityWrapEl = document.getElementById("security-wrap");
+const securityWarningsEl = document.getElementById("security-warnings");
+const dashboardBtn = document.getElementById("open-dashboard");
 
 let currentHost = null;
 
@@ -55,7 +59,7 @@ function renderCategories(data) {
       countLabel = `${active} live · ${blocked} blk`;
     }
     return `
-      <div class="category">
+      <div class="category glass-panel">
         <div class="category-left">
           ${ICONS[category.id]}
           <span>${category.label}</span>
@@ -109,7 +113,7 @@ function renderCategoryToggles(data) {
   categoryTogglesEl.innerHTML = CATEGORIES.map((category) => {
     const checked = prefs[category.id] ? "checked" : "";
     return `
-      <label class="mini-toggle">
+      <label class="mini-toggle glass-panel">
         <span>${ICONS[category.id]}${category.label}</span>
         <input type="checkbox" data-category="${category.id}" ${checked} />
         <span class="switch mini" aria-hidden="true"></span>
@@ -140,6 +144,34 @@ function renderFavicon(url) {
   } else {
     faviconEl.removeAttribute("src");
     faviconEl.hidden = true;
+  }
+}
+
+function renderSecurityWarnings(data) {
+  const forms = data.insecureForms || [];
+  if (!forms.length) {
+    securityWrapEl.hidden = true;
+    securityWarningsEl.innerHTML = "";
+    return;
+  }
+  securityWrapEl.hidden = false;
+  const rows = forms
+    .map(
+      (item) =>
+        `<div class="security-item"><strong>Insecure form</strong><span>${escapeHtml(item.method)} → ${escapeHtml(item.action)}</span></div>`
+    )
+    .join("");
+  securityWarningsEl.innerHTML = rows;
+}
+
+function renderTrustToggle(data, isHttp) {
+  const canTrust = Boolean(currentHost) && isHttp;
+  trustToggleEl.disabled = !canTrust;
+  trustToggleEl.checked = Boolean(data.whitelisted);
+  toggleEl.disabled = !canTrust || Boolean(data.whitelisted);
+  if (data.whitelisted) {
+    toggleEl.checked = false;
+    categoryTogglesEl.hidden = true;
   }
 }
 
@@ -180,8 +212,10 @@ function render(data, hostFallback, isHttp) {
   renderList(data, isHttp);
   renderCategoryToggles(data);
   renderLifetime(data.lifetimeBlocked || 0);
+  renderSecurityWarnings(data);
+  renderTrustToggle(data, isHttp);
 
-  const canToggle = Boolean(host) && isHttp;
+  const canToggle = Boolean(host) && isHttp && !data.whitelisted;
   toggleEl.disabled = !canToggle;
   toggleEl.checked = Boolean(data.blockingEnabled);
   document.body.classList.remove("is-loading");
@@ -245,6 +279,22 @@ toggleEl.addEventListener("change", async () => {
     enabled: toggleEl.checked
   });
   await load();
+});
+
+trustToggleEl.addEventListener("change", async () => {
+  if (!currentHost) {
+    return;
+  }
+  await chrome.runtime.sendMessage({
+    type: "SET_WHITELIST",
+    host: currentHost,
+    trusted: trustToggleEl.checked
+  });
+  await load();
+});
+
+dashboardBtn.addEventListener("click", () => {
+  chrome.runtime.openOptionsPage();
 });
 
 load().catch((error) => {

@@ -8,9 +8,12 @@
   </head>
   <body class="is-loading">
     <header class="header">
-      <div>
-        <p class="brand">Glass</p>
-        <p class="status" id="status">Reading this page…</p>
+      <div class="brand-row">
+        <img class="brand-logo" src="../icons/icon128.png" alt="" />
+        <div>
+          <p class="brand">Glass</p>
+          <p class="status" id="status">Reading this page…</p>
+        </div>
       </div>
       <div class="domain-row">
         <img id="favicon" class="favicon" alt="" hidden />
@@ -18,7 +21,7 @@
       </div>
     </header>
 
-    <section class="badge skeleton-target" id="badge" data-severity="green">
+    <section class="badge glass-panel skeleton-target" id="badge" data-severity="green">
       <p class="badge-count" id="badge-count">—</p>
       <p class="badge-label" id="badge-label">trackers</p>
       <p class="badge-split" id="badge-split" hidden></p>
@@ -26,14 +29,14 @@
 
     <section class="categories skeleton-target" id="categories"></section>
 
-    <section class="list-wrap skeleton-target">
+    <section class="list-wrap glass-panel skeleton-target">
       <h2 class="list-title">Trackers on this page</h2>
       <div class="tracker-list" id="tracker-list">
         <p class="empty">Reading this page…</p>
       </div>
     </section>
 
-    <label class="toggle">
+    <label class="toggle glass-panel">
       <span class="toggle-copy">
         <span class="toggle-title">Block trackers on this site</span>
         <span class="toggle-hint">Reload the page after switching</span>
@@ -44,8 +47,23 @@
 
     <section class="category-toggles" id="category-toggles" hidden></section>
 
+    <section class="security-wrap glass-panel skeleton-target" id="security-wrap" hidden>
+      <h2 class="list-title">Security warnings</h2>
+      <div id="security-warnings"></div>
+    </section>
+
+    <label class="toggle trust-toggle glass-panel">
+      <span class="toggle-copy">
+        <span class="toggle-title">Trust this site</span>
+        <span class="toggle-hint">Skip tracker blocking here</span>
+      </span>
+      <input type="checkbox" id="trust-toggle" />
+      <span class="switch" aria-hidden="true"></span>
+    </label>
+
     <footer class="footer">
       <p id="lifetime" class="lifetime" hidden></p>
+      <button type="button" class="dashboard-link" id="open-dashboard">Open full dashboard</button>
       <p>Everything above stays on your device.</p>
     </footer>
     <script src="popup.js"></script>

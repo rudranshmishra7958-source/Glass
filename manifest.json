@@ -1,14 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Glass",
-  "version": "0.1.1",
-  "description": "See what a website is doing behind your back — locally, in your browser.",
+  "version": "0.3.0",
+  "description": "See what a website is doing behind your back — trackers, phishing, and risky downloads, all local.",
   "permissions": [
     "tabs",
+    "activeTab",
     "webRequest",
     "storage",
     "declarativeNetRequest",
-    "declarativeNetRequestFeedback"
+    "declarativeNetRequestFeedback",
+    "downloads",
+    "notifications"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -27,6 +30,24 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["warning.html"],
+      "matches": ["<all_urls>"],
+      "use_dynamic_url": true
+    }
+  ],
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
   },
   "declarative_net_request": {
     "rule_resources": [
@@ -49,6 +70,11 @@
         "id": "ruleset_other",
         "enabled": false,
         "path": "rules/other.json"
+      },
+      {
+        "id": "ruleset_threats",
+        "enabled": false,
+        "path": "rules/threats.json"
       }
     ]
   }

@@ -2,3 +2,5 @@
 Thumbs.db
 desktop.ini
 _metadata/
+node_modules/
+package-lock.json

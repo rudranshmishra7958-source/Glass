@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Glass — Site Blocked</title>
+    <style>
+      :root {
+        --bg: #f4f1ea;
+        --panel: #fffdf8;
+        --ink: #1c1b18;
+        --muted: #6b675f;
+        --red: #8b3a32;
+        --red-soft: #f3ddd9;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.5 "Segoe UI", system-ui, sans-serif;
+        padding: 24px;
+      }
+      .card {
+        max-width: 520px;
+        background: var(--panel);
+        border: 1px solid #e4ddd2;
+        border-radius: 16px;
+        padding: 28px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+      .domain {
+        display: inline-block;
+        margin: 12px 0;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: var(--red-soft);
+        color: var(--red);
+        font-family: ui-monospace, Consolas, monospace;
+        word-break: break-all;
+      }
+      p {
+        color: var(--muted);
+        margin: 0 0 12px;
+      }
+      button {
+        margin-top: 16px;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 16px;
+        background: #2f6f4e;
+        color: white;
+        font: inherit;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Glass blocked a dangerous site</h1>
+      <p>This domain is on a public malware/phishing feed. Glass stopped the page before it loaded.</p>
+      <div class="domain" id="domain">unknown site</div>
+      <p>Everything Glass checked stayed on your device — no data was sent anywhere.</p>
+      <button type="button" id="back">Go back</button>
+    </main>
+    <script>
+      function blockedLabel() {
+        const params = new URLSearchParams(location.search);
+        const fromQuery = params.get("domain");
+        if (fromQuery) {
+          return fromQuery;
+        }
+
+        const hash = location.hash.slice(1);
+        if (hash) {
+          try {
+            return new URL(hash).hostname || hash;
+          } catch {
+            return hash;
+          }
+        }
+
+        return "unknown site";
+      }
+
+      document.getElementById("domain").textContent = blockedLabel();
+      const domain = blockedLabel();
+      if (domain && domain !== "unknown site" && chrome.runtime?.sendMessage) {
+        chrome.runtime.sendMessage({ type: "LOG_THREAT_BLOCK", domain }).catch(() => {});
+      }
+      document.getElementById("back").addEventListener("click", () => {
+        history.length > 1 ? history.back() : (location.href = "about:blank");
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Glass dashboard</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand-row">
+        <img src="../icons/icon128.png" alt="" class="brand-logo" />
+        <div>
+          <h1>Glass</h1>
+          <p class="tag">Local tracker, phishing, and download protection</p>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button type="button" class="tab is-active" data-tab="overview">Overview</button>
+      <button type="button" class="tab" data-tab="live">Live Trackers</button>
+      <button type="button" class="tab" data-tab="threats">Threat Log</button>
+      <button type="button" class="tab" data-tab="history">History</button>
+      <button type="button" class="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <main>
+      <section class="panel is-active" id="panel-overview">
+        <div class="cards">
+          <article class="glass-panel stat">
+            <p class="stat-label">Trackers blocked</p>
+            <p class="stat-value" id="stat-blocked">0</p>
+          </article>
+          <article class="glass-panel stat">
+            <p class="stat-label">Threats blocked</p>
+            <p class="stat-value" id="stat-threats">0</p>
+          </article>
+          <article class="glass-panel stat">
+            <p class="stat-label">7-day protection</p>
+            <p class="stat-value" id="stat-score">0%</p>
+          </article>
+        </div>
+        <p class="hint">Protection score is blocked ÷ detected trackers over the last 7 days.</p>
+      </section>
+
+      <section class="panel" id="panel-live">
+        <div class="glass-panel">
+          <h2 id="live-domain">Current tab</h2>
+          <p class="hint" id="live-summary">No live tab data yet.</p>
+          <div id="live-list"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-threats">
+        <div class="glass-panel">
+          <h2>Threat log</h2>
+          <div id="threat-list" class="table"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-history">
+        <div class="glass-panel">
+          <h2>Last 7 days</h2>
+          <div id="history-list" class="table"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-settings">
+        <div class="glass-panel">
+          <h2>Default category blocking</h2>
+          <p class="hint">Used when you first turn on blocking for a new site.</p>
+          <div id="default-toggles"></div>
+        </div>
+        <div class="glass-panel">
+          <h2>Trusted sites</h2>
+          <div id="whitelist-list"></div>
+        </div>
+        <div class="glass-panel">
+          <h2>Regenerate rules</h2>
+          <p class="hint">Reloads phishing rules from the bundled URLhaus list. Tracker rules stay local — run <code>node generate-rules.js</code> then reload the extension to refresh EasyPrivacy coverage.</p>
+          <button type="button" class="action" id="regen-rules">Reload threat rules</button>
+          <p class="hint" id="regen-status"></p>
+        </div>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
