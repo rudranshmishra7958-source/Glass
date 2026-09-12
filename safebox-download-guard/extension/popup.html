@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
+  <title>SafeBox</title>
+
+  <link
+    rel="stylesheet"
+    href="popup.css"
+  >
+</head>
+
+
+<body>
+
+  <header class="topbar">
+
+    <div class="brand">
+
+      <div class="shield">
+        🛡
+      </div>
+
+      <div class="brand-copy">
+
+        <h1>
+          SafeBox
+        </h1>
+
+        <p>
+          Download Protection
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div class="engine">
+
+      <span></span>
+
+      LOCAL ENGINE
+
+    </div>
+
+  </header>
+
+
+  <main>
+
+    <!-- =================================================
+         BLOCKED DOWNLOAD
+    ================================================== -->
+
+    <section
+      id="pendingPanel"
+      class="panel threat hidden"
+    >
+
+      <div class="threat-head">
+
+        <div class="threat-icon">
+          !
+        </div>
+
+
+        <div class="threat-copy">
+
+          <span class="eyebrow">
+            DOWNLOAD BLOCKED
+          </span>
+
+          <h2 id="pendingName">
+            Threat detected
+          </h2>
+
+          <p id="pendingReason">
+            SafeBox stopped access to this file.
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="warning">
+        This file has been flagged as dangerous.
+        Do not bypass this warning unless you understand
+        the security risk.
+      </div>
+
+
+      <div class="actions">
+
+        <button
+          id="deletePending"
+          class="btn danger"
+          type="button"
+        >
+          Delete File
+        </button>
+
+
+        <button
+          id="allowPending"
+          class="btn override"
+          type="button"
+        >
+          Download Anyway
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- =================================================
+         MANUAL SCAN
+    ================================================== -->
+
+    <section class="panel">
+
+      <span class="eyebrow">
+        MANUAL SCAN
+      </span>
+
+      <h3>
+        Scan an existing file
+      </h3>
+
+      <p class="hint">
+        Open the SafeBox scanner to analyze a file
+        locally using ClamAV, YARA and heuristics.
+      </p>
+
+
+      <button
+        id="chooseFile"
+        class="btn secondary"
+        type="button"
+      >
+        📄 Choose File
+      </button>
+
+    </section>
+
+
+    <!-- =================================================
+         LAST SCAN
+    ================================================== -->
+
+    <section
+      id="report"
+      class="hidden"
+    >
+
+      <section class="panel file-card">
+
+        <div class="file-info">
+
+          <span class="eyebrow">
+            LAST SCAN
+          </span>
+
+          <h2 id="filename">
+            —
+          </h2>
+
+          <p id="filemeta">
+            —
+          </p>
+
+        </div>
+
+
+        <div
+          id="riskBadge"
+          class="risk"
+        >
+          UNKNOWN
+        </div>
+
+      </section>
+
+
+      <div class="grid">
+
+        <div class="metric panel">
+
+          <span>
+            CLAMAV
+          </span>
+
+          <strong id="clamav">
+            —
+          </strong>
+
+        </div>
+
+
+        <div class="metric panel">
+
+          <span>
+            YARA
+          </span>
+
+          <strong id="yara">
+            —
+          </strong>
+
+        </div>
+
+
+        <div class="metric panel">
+
+          <span>
+            SHA-256
+          </span>
+
+          <strong id="hash">
+            —
+          </strong>
+
+        </div>
+
+
+        <div class="metric panel">
+
+          <span>
+            ACTION
+          </span>
+
+          <strong id="action">
+            —
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <section class="panel">
+
+        <div class="row">
+
+          <div class="assessment-title">
+
+            <span class="eyebrow">
+              ASSESSMENT
+            </span>
+
+            <h3 id="reason">
+              —
+            </h3>
+
+          </div>
+
+
+          <b id="score">
+            0/100
+          </b>
+
+        </div>
+
+
+        <div
+          id="evidence"
+          class="evidence"
+        ></div>
+
+      </section>
+
+
+      <section class="panel details-panel">
+
+        <span class="eyebrow">
+          ANALYSIS
+        </span>
+
+        <h3>
+          Detailed Evidence
+        </h3>
+
+
+        <div
+          id="details"
+          class="details"
+        ></div>
+
+      </section>
+
+    </section>
+
+
+    <!-- =================================================
+         HISTORY
+    ================================================== -->
+
+    <section
+      id="historyPanel"
+      class="panel hidden"
+    >
+
+      <div class="row">
+
+        <div>
+
+          <span class="eyebrow">
+            ACTIVITY
+          </span>
+
+          <h3>
+            Recent Scans
+          </h3>
+
+        </div>
+
+
+        <span id="historyCount">
+          0
+        </span>
+
+      </div>
+
+
+      <div id="history"></div>
+
+    </section>
+
+  </main>
+
+
+  <footer>
+    SafeBox • Local Analysis • Privacy First
+  </footer>
+
+
+  <script src="popup.js"></script>
+
+</body>
+
+</html>

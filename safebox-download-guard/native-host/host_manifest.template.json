@@ -1,0 +1,9 @@
+{
+  "name": "com.safebox.browser",
+  "description": "SafeBox local malware scanner and download quarantine host",
+  "path": "__HOST_PATH__",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://EXTENSION_ID/"
+  ]
+}

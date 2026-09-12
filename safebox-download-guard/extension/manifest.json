@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "SafeBox Download Guard",
+  "version": "0.3.0",
+  "description": "Local browser-download protection using Chrome danger signals, ClamAV, YARA and SHA-256.",
+  "permissions": ["downloads", "nativeMessaging", "storage"],
+  "background": {"service_worker": "background.js"},
+  "action": {"default_title": "SafeBox", "default_popup": "popup.html"}
+}
