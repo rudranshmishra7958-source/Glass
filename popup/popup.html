@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Glass</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div>
+        <p class="brand">Glass</p>
+        <p class="status" id="status">Glass is running</p>
+      </div>
+      <p class="domain" id="domain">…</p>
+    </header>
+
+    <section class="badge" id="badge" data-severity="green">
+      <p class="badge-count" id="badge-count">0</p>
+      <p class="badge-label" id="badge-label">trackers</p>
+    </section>
+
+    <section class="categories" id="categories"></section>
+
+    <section class="list-wrap">
+      <h2 class="list-title">Trackers on this page</h2>
+      <div class="tracker-list" id="tracker-list"></div>
+    </section>
+
+    <label class="toggle">
+      <span class="toggle-copy">
+        <span class="toggle-title">Block trackers on this site</span>
+        <span class="toggle-hint">Reload the page after switching</span>
+      </span>
+      <input type="checkbox" id="block-toggle" />
+      <span class="switch" aria-hidden="true"></span>
+    </label>
+
+    <footer class="footer">Everything above stays on your device.</footer>
+    <script src="popup.js"></script>
+  </body>
+</html>
