@@ -3,7 +3,8 @@ importScripts(
   "tracker-list.js",
   "threat-list.js",
   "surrogate-list.js",
-  "embed-domains.js"
+  "embed-domains.js",
+  "company-map.js"
 );
 
 const tabCache = new Map();
@@ -396,6 +397,60 @@ async function pruneHistory() {
   }
 }
 
+function uniqueHostsFromSnapshot(data) {
+  const hosts = new Set();
+  for (const category of CATEGORY_ORDER) {
+    for (const domain of data?.blockedTrackers?.[category] || []) {
+      hosts.add(domain);
+    }
+    for (const domain of data?.trackers?.[category] || []) {
+      hosts.add(domain);
+    }
+  }
+  return Array.from(hosts).slice(0, 80);
+}
+
+function addHostsToTally(tally, hosts) {
+  for (const host of hosts || []) {
+    const company = companyFromHost(host);
+    tally.set(company, (tally.get(company) || 0) + 1);
+  }
+}
+
+function rankWatchers(visitHistory, sessionHosts) {
+  const tally = new Map();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 7);
+  const cutoffKey = cutoff.toISOString().slice(0, 10);
+  for (const day of Object.keys(visitHistory || {})) {
+    if (day < cutoffKey) {
+      continue;
+    }
+    for (const site of Object.values(visitHistory[day] || {})) {
+      addHostsToTally(tally, site.hosts);
+    }
+  }
+  addHostsToTally(tally, sessionHosts);
+  return Array.from(tally.entries())
+    .map(([company, count]) => ({ company, count }))
+    .sort((a, b) => b.count - a.count || a.company.localeCompare(b.company));
+}
+
+async function sessionTrackerHosts() {
+  const stored = await chrome.storage.session.get(null);
+  const hosts = [];
+  for (const [key, raw] of Object.entries(stored || {})) {
+    if (!key.startsWith("glassTab:") || !raw) {
+      continue;
+    }
+    for (const category of CATEGORY_ORDER) {
+      hosts.push(...(raw.trackers?.[category] || []));
+      hosts.push(...(raw.blockedHosts?.[category] || []));
+    }
+  }
+  return hosts;
+}
+
 async function logVisit(url, data) {
   const host = hostnameFromUrl(url || "") || data.domain;
   if (!host) {
@@ -407,13 +462,25 @@ async function logVisit(url, data) {
   if (!history[day]) {
     history[day] = {};
   }
-  const prevBlocked = Number(history[day][host]?.blocked) || 0;
+  const prev = history[day][host] || {};
+  const prevBlocked = Number(prev.blocked) || 0;
   const nextBlocked = Number(data.blockedCount) || 0;
+  const counts = data.counts || emptyCounts();
+  const mergedHosts = Array.from(
+    new Set([...(prev.hosts || []), ...uniqueHostsFromSnapshot(data)])
+  ).slice(0, 80);
   history[day][host] = {
     detected: Number(data.detectedCount) || 0,
     blocked: nextBlocked,
     active: Number(data.activeCount) || 0,
-    ts: Date.now()
+    ts: Date.now(),
+    counts: {
+      advertising: Number(counts.advertising) || 0,
+      analytics: Number(counts.analytics) || 0,
+      social: Number(counts.social) || 0,
+      other: Number(counts.other) || 0
+    },
+    hosts: mergedHosts
   };
   const lifetimeBlocked = Math.max(0, (stored.lifetimeBlocked || 0) - prevBlocked + nextBlocked);
   await chrome.storage.local.set({ visitHistory: history, lifetimeBlocked });
@@ -940,33 +1007,42 @@ function addBlockedHost(state, host) {
   return true;
 }
 
-async function getMatchedDomains(tabId, state) {
+function blockedSetsFromState(state) {
   const blocked = emptyTrackers();
-  const tab = state || (await getTabState(tabId));
-  const started = tab?.navStartedAt || 0;
-  try {
-    const result = await chrome.declarativeNetRequest.getMatchedRules({ tabId });
-    for (const info of result.rulesMatchedInfo || []) {
-      if (started && info.timeStamp && info.timeStamp < started) {
-        continue;
-      }
-      const meta = RULE_INDEX.byId[info.rule.ruleId];
-      if (!meta) {
-        continue;
-      }
-      blocked[meta.category].add(meta.domain);
-    }
-  } catch (error) {
-    console.warn("[Glass] getMatchedRules", error);
+  if (!state) {
+    return blocked;
   }
-  if (tab) {
-    for (const category of CATEGORY_ORDER) {
-      for (const domain of tab.blockedHosts[category]) {
-        blocked[category].add(domain);
-      }
+  for (const category of CATEGORY_ORDER) {
+    for (const domain of state.blockedHosts[category]) {
+      blocked[category].add(domain);
     }
   }
   return blocked;
+}
+
+async function recordRuleMatch(tabId, host) {
+  if (!tabId || tabId < 0 || !host) {
+    return;
+  }
+  const state = await ensureTab(tabId);
+  if (state.pageDomain && isFirstParty(state.pageDomain, host)) {
+    return;
+  }
+  const exceptions = await getTrackerExceptions();
+  if (isTrackerExcepted(exceptions, state.pageDomain, host)) {
+    return;
+  }
+  if (!addBlockedHost(state, host)) {
+    return;
+  }
+  state.dirty = true;
+  await putTabState(tabId, state);
+  await refreshTabUi(tabId);
+  await scheduleHistoryFlush(tabId);
+}
+
+async function debugGetMatchedRules(tabId) {
+  return chrome.declarativeNetRequest.getMatchedRules({ tabId });
 }
 
 async function getLifetimeBlocked() {
@@ -1015,7 +1091,7 @@ async function setTabBadge(tabId, detectedCount, url) {
 
 async function snapshot(tabId) {
   const state = await getTabState(tabId);
-  const blockedSets = await getMatchedDomains(tabId, state);
+  const blockedSets = blockedSetsFromState(state);
 
   const activeLists = emptyLists();
   const blockedLists = emptyLists();
@@ -1098,6 +1174,21 @@ async function refreshTabUi(tabId, url) {
     await scheduleHistoryFlush(tabId);
   }
   return data;
+}
+
+if (chrome.declarativeNetRequest.onRuleMatchedDebug) {
+  chrome.declarativeNetRequest.onRuleMatchedDebug.addListener((info) => {
+    const tabId = info.request?.tabId;
+    if (!tabId || tabId < 0) {
+      return;
+    }
+    if (info.rule?.rulesetId === "ruleset_threats") {
+      return;
+    }
+    const meta = RULE_INDEX.byId[info.rule?.ruleId];
+    const host = meta?.domain || hostnameFromUrl(info.request?.url || "");
+    enqueueTab(tabId, () => recordRuleMatch(tabId, host));
+  });
 }
 
 chrome.webRequest.onErrorOccurred.addListener(
@@ -1460,6 +1551,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const settings = await getSettings();
       const visitHistory = stored.visitHistory || {};
       const pause = await getPauseState();
+      const watchers = rankWatchers(visitHistory, await sessionTrackerHosts());
       sendResponse({
         lifetimeBlocked: stored.lifetimeBlocked || 0,
         lifetimeThreatsBlocked: stored.lifetimeThreatsBlocked || 0,
@@ -1470,7 +1562,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         settings,
         protectionScore: protectionScore(visitHistory),
         paused: pause.paused,
-        pauseUntil: pause.until
+        pauseUntil: pause.until,
+        watchers
       });
     })();
     return true;
@@ -1568,6 +1661,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ok: true,
         message: "Bundled threat rules reloaded."
       });
+    })();
+    return true;
+  }
+
+  if (message?.type === "DEBUG_GET_MATCHED_RULES") {
+    (async () => {
+      try {
+        const tabId = Number(message.tabId);
+        const result = await debugGetMatchedRules(tabId);
+        sendResponse({ ok: true, result });
+      } catch (error) {
+        sendResponse({ ok: false, error: String(error?.message || error) });
+      }
     })();
     return true;
   }

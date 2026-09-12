@@ -4,119 +4,321 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Glass dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;1,400&family=Oswald:wght@700&family=Arvo:wght@400;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="options.css" />
   </head>
-  <body>
-    <header class="top">
-      <div class="brand-row">
-        <img src="../icons/icon128.png" alt="" class="brand-logo" />
-        <div>
-          <h1>Glass</h1>
-          <p class="tag">Local tracker, phishing, and download protection</p>
-        </div>
+  <body class="landing-active">
+    <section id="landing-view" aria-label="Glass home">
+      <div id="landing-ambiance" aria-hidden="true">
+        <canvas id="landing-lattice"></canvas>
       </div>
-    </header>
-
-    <nav class="tabs" role="tablist">
-      <button type="button" class="tab is-active" data-tab="overview">Overview</button>
-      <button type="button" class="tab" data-tab="live">Live Trackers</button>
-      <button type="button" class="tab" data-tab="threats">Threat Log</button>
-      <button type="button" class="tab" data-tab="history">History</button>
-      <button type="button" class="tab" data-tab="settings">Settings</button>
-    </nav>
-
-    <main>
-      <section class="panel is-active" id="panel-overview">
-        <div class="cards">
-          <article class="glass-panel stat">
-            <p class="stat-label">Trackers blocked</p>
-            <p class="stat-value" id="stat-blocked">0</p>
-          </article>
-          <article class="glass-panel stat">
-            <p class="stat-label">Threats blocked</p>
-            <p class="stat-value" id="stat-threats">0</p>
-          </article>
-          <article class="glass-panel stat">
-            <p class="stat-label">7-day protection</p>
-            <p class="stat-value" id="stat-score">0%</p>
-          </article>
+      <section class="landing-hero">
+        <div class="landing-hero-copy">
+          <h2 class="landing-headline">Glass sees what watches you.</h2>
+          <p class="landing-subtitle">Every tracker. Every risk. Nothing hidden — not even from you.</p>
+          <button type="button" class="landing-enter" id="landing-enter">Enter</button>
+          <button type="button" class="watchers-portal" id="landing-watchers-portal" aria-label="Open who is watching you">
+            <span class="watchers-portal-art" aria-hidden="true">
+              <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">
+                <circle cx="24" cy="24" r="6" />
+                <circle class="portal-ring" cx="24" cy="24" r="12" />
+                <circle class="portal-ring portal-ring--slow" cx="24" cy="24" r="18" />
+                <path d="M4 24h8" />
+                <path d="M36 24h8" />
+              </svg>
+            </span>
+            <span class="watchers-portal-label">Who's watching you</span>
+          </button>
         </div>
-        <div class="glass-panel">
-          <h2>Trackers blocked — last 7 days</h2>
-          <div id="overview-chart" class="chart-wrap"></div>
-        </div>
-        <p class="hint">Protection score is blocked ÷ detected trackers over the last 7 days.</p>
-      </section>
-
-      <section class="panel" id="panel-live">
-        <div class="glass-panel">
-          <h2>Across your open tabs</h2>
-          <p class="hint" id="live-summary">Reading open tabs…</p>
-          <p class="hint">Counts come from the same live session data as the popup.</p>
-          <div id="live-list"></div>
-        </div>
-      </section>
-
-      <section class="panel" id="panel-threats">
-        <div class="glass-panel">
-          <h2>Threat log</h2>
-          <div id="threat-list" class="table"></div>
-        </div>
-      </section>
-
-      <section class="panel" id="panel-history">
-        <div class="glass-panel">
-          <div class="panel-head">
-            <h2>Last 7 days</h2>
-            <button type="button" class="action danger" id="clear-history">Clear history</button>
+        <div class="landing-hero-visual">
+          <div class="cube-scene">
+            <div class="cube-glow" aria-hidden="true"></div>
+            <div class="cube-spinner">
+              <div class="cube">
+                <div class="cube-face cube-face--front"></div>
+                <div class="cube-face cube-face--back"></div>
+                <div class="cube-face cube-face--right"></div>
+                <div class="cube-face cube-face--left"></div>
+                <div class="cube-face cube-face--top"></div>
+                <div class="cube-face cube-face--bottom"></div>
+              </div>
+            </div>
+            <div class="cube-reflection" aria-hidden="true">
+              <div class="cube-spinner">
+                <div class="cube cube--mirror">
+                  <div class="cube-face cube-face--front"></div>
+                  <div class="cube-face cube-face--back"></div>
+                  <div class="cube-face cube-face--right"></div>
+                  <div class="cube-face cube-face--left"></div>
+                  <div class="cube-face cube-face--top"></div>
+                  <div class="cube-face cube-face--bottom"></div>
+                </div>
+              </div>
+            </div>
           </div>
-          <p class="hint">Rows are saved about 5 seconds after tracking activity stops, or when you leave the site.</p>
-          <div id="history-list" class="table"></div>
         </div>
       </section>
 
-      <section class="panel" id="panel-settings">
-        <div class="glass-panel">
-          <h2>Default category blocking</h2>
-          <p class="hint">Used when you first turn on blocking for a new site.</p>
-          <div id="default-toggles"></div>
+      <div class="landing-features">
+        <article class="landing-feature enter-left">
+          <span class="landing-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M12 3 5 6.5v5.2c0 4.3 2.9 8.2 7 9.3 4.1-1.1 7-5 7-9.3V6.5L12 3z" />
+              <path d="M8.5 12.2 11 14.6l4.5-5" />
+            </svg>
+          </span>
+          <div>
+            <h3><span class="feature-title">Tracker Blocking</span></h3>
+            <p>Advertising, analytics, social, and other trackers are stopped locally with declarative network rules — before they load.</p>
+          </div>
+        </article>
+        <article class="landing-feature enter-right">
+          <span class="landing-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M12 9v4" />
+              <path d="M12 16.5h.01" />
+              <path d="M10.3 4.7 2.8 18.2A2 2 0 0 0 4.5 21h15a2 2 0 0 0 1.7-2.8L13.7 4.7a2 2 0 0 0-3.4 0z" />
+            </svg>
+          </span>
+          <div>
+            <h3><span class="feature-title">Phishing Protection</span></h3>
+            <p>Known phishing and malware hosts are blocked on the way in. Redirects you dodge are kept in a local threat log.</p>
+          </div>
+        </article>
+        <article class="landing-feature enter-up">
+          <span class="landing-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
+          </span>
+          <div>
+            <h3><span class="feature-title">Local-First Privacy</span></h3>
+            <p>Visit history, threat log, and trusted sites stay on this device. Glass does not upload your browsing data.</p>
+          </div>
+        </article>
+        <article class="landing-feature enter-scale">
+          <span class="landing-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M4 7h10" />
+              <circle cx="16" cy="7" r="2.2" />
+              <path d="M20 12H10" />
+              <circle cx="8" cy="12" r="2.2" />
+              <path d="M4 17h10" />
+              <circle cx="16" cy="17" r="2.2" />
+            </svg>
+          </span>
+          <div>
+            <h3><span class="feature-title">Per-Category Control</span></h3>
+            <p>Turn Advertising, Analytics, Social, or Other blocking on or off per site — or set the defaults once in Settings.</p>
+          </div>
+        </article>
+        <article class="landing-feature enter-down landing-xray" id="landing-xray" role="button" tabindex="0" aria-label="Open who is watching you">
+          <span class="landing-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <circle cx="12" cy="12" r="3" />
+              <circle cx="12" cy="12" r="6.5" />
+              <circle cx="12" cy="12" r="10" />
+              <path d="M2 12h4" />
+              <path d="M18 12h4" />
+            </svg>
+          </span>
+          <div>
+            <h3><span class="feature-title">Company X-Ray</span></h3>
+            <p>See past the domain names. Glass maps every tracker back to the company running it — so you know exactly who's watching, not just what.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <div id="dashboard-tool" aria-hidden="true">
+      <header class="top">
+        <button type="button" class="brand-home" id="brand-home" aria-label="Back to Glass home">
+          <div class="brand-cube-scene" aria-hidden="true">
+            <div class="cube-glow cube-glow--sm"></div>
+            <div class="cube-spinner">
+              <div class="cube cube--sm">
+                <div class="cube-face cube-face--front"></div>
+                <div class="cube-face cube-face--back"></div>
+                <div class="cube-face cube-face--right"></div>
+                <div class="cube-face cube-face--left"></div>
+                <div class="cube-face cube-face--top"></div>
+                <div class="cube-face cube-face--bottom"></div>
+              </div>
+            </div>
+          </div>
+          <span class="brand-copy">
+            <span class="brand-title">Glass</span>
+            <span class="tag">Local tracker, phishing, and download protection</span>
+          </span>
+        </button>
+      </header>
+
+      <nav class="tabs" role="tablist">
+        <button type="button" class="tab is-active" data-tab="overview">Overview</button>
+        <button type="button" class="tab" data-tab="live">Live Trackers</button>
+        <button type="button" class="tab" data-tab="threats">Threat Log</button>
+        <button type="button" class="tab" data-tab="history">History</button>
+        <button type="button" class="tab" data-tab="settings">Settings</button>
+      </nav>
+
+      <main>
+        <section class="panel is-active" id="panel-overview">
+          <p class="overview-intro hint">Protection score is blocked ÷ detected trackers over the last 7 days.</p>
+          <div class="overview-stats">
+            <article class="overview-stat">
+              <p class="stat-label">Trackers blocked</p>
+              <p class="stat-value" id="stat-blocked">0</p>
+            </article>
+            <article class="overview-stat">
+              <p class="stat-label">Threats blocked</p>
+              <p class="stat-value" id="stat-threats">0</p>
+            </article>
+            <article class="overview-stat">
+              <p class="stat-label">7-day protection</p>
+              <p class="stat-value" id="stat-score">0%</p>
+            </article>
+          </div>
+          <div class="overview-chart-panel">
+            <h2>Trackers blocked — last 7 days</h2>
+            <div id="overview-chart" class="chart-wrap"></div>
+          </div>
+          <div class="watchers-panel">
+            <p class="stat-label">Who's watching you</p>
+            <div id="watchers-list"></div>
+            <button type="button" class="watchers-see-all" id="overview-watchers-all">See all</button>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-live">
+          <div class="workspace-panel">
+            <h2 class="workspace-title">Across your open tabs</h2>
+            <p class="workspace-intro hint" id="live-summary">Reading open tabs…</p>
+            <p class="hint">Counts come from the same live session data as the popup.</p>
+            <div id="live-list"></div>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-threats">
+          <div class="workspace-panel">
+            <h2 class="workspace-title">Threat log</h2>
+            <p class="workspace-intro hint">Phishing and malware redirects Glass stopped on this device.</p>
+            <div id="threat-list" class="table"></div>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-history">
+          <div class="workspace-panel">
+            <div class="panel-head">
+              <h2 class="workspace-title">Last 7 days</h2>
+              <button type="button" class="action danger" id="clear-history">Clear history</button>
+            </div>
+            <p class="workspace-intro hint">Rows are saved about 5 seconds after tracking activity stops, or when you leave the site.</p>
+            <div class="filter-bar" id="history-filters">
+              <div class="filter-chip-wrap">
+                <button type="button" class="filter-chip" data-filter="site" aria-expanded="false" aria-haspopup="listbox">
+                  <span class="filter-chip-label">Site: any</span>
+                  <span class="filter-clear" data-clear="site" hidden>×</span>
+                </button>
+                <div class="filter-menu" id="filter-menu-site" role="listbox">
+                  <button type="button" class="filter-option" data-value="">any</button>
+                </div>
+              </div>
+              <div class="filter-chip-wrap">
+                <button type="button" class="filter-chip" data-filter="category" aria-expanded="false" aria-haspopup="listbox">
+                  <span class="filter-chip-label">Category: any</span>
+                  <span class="filter-clear" data-clear="category" hidden>×</span>
+                </button>
+                <div class="filter-menu" id="filter-menu-category" role="listbox">
+                  <button type="button" class="filter-option" data-value="">any</button>
+                  <button type="button" class="filter-option" data-value="advertising">Advertising</button>
+                  <button type="button" class="filter-option" data-value="analytics">Analytics</button>
+                  <button type="button" class="filter-option" data-value="social">Social</button>
+                  <button type="button" class="filter-option" data-value="other">Other</button>
+                </div>
+              </div>
+              <div class="filter-chip-wrap">
+                <button type="button" class="filter-chip" data-filter="date" aria-expanded="false" aria-haspopup="listbox">
+                  <span class="filter-chip-label">Date: any</span>
+                  <span class="filter-clear" data-clear="date" hidden>×</span>
+                </button>
+                <div class="filter-menu" id="filter-menu-date" role="listbox">
+                  <button type="button" class="filter-option" data-value="">any</button>
+                </div>
+              </div>
+            </div>
+            <div id="history-list" class="table"></div>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-settings">
+          <div class="settings-block">
+            <h2 class="workspace-title">Default category blocking</h2>
+            <p class="hint">Used when you first turn on blocking for a new site.</p>
+            <div id="default-toggles"></div>
+          </div>
+          <div class="settings-block">
+            <h2 class="workspace-title">Page cleanup</h2>
+            <label class="setting-row">
+              <span>Hide leftover ad spaces</span>
+              <input type="checkbox" id="cosmetic-toggle" />
+            </label>
+            <p class="hint">Hides empty ad boxes after trackers are blocked. Local CSS only.</p>
+          </div>
+          <div class="settings-block">
+            <h2 class="workspace-title">Trusted sites</h2>
+            <p class="hint">Same list as the popup’s “Trust this site” toggle.</p>
+            <form id="trust-form" class="trust-form">
+              <input id="trust-input" type="text" placeholder="example.com" autocomplete="off" />
+              <button type="submit" class="action">Add</button>
+            </form>
+            <p class="hint" id="trust-error" hidden></p>
+            <div id="whitelist-list"></div>
+          </div>
+          <div class="settings-block">
+            <h2 class="workspace-title">Allowed trackers</h2>
+            <p class="hint">Single-tracker exceptions for a specific site.</p>
+            <div id="exception-list"></div>
+          </div>
+          <div class="settings-block">
+            <h2 class="workspace-title">Export</h2>
+            <p class="hint">Download history, threat log, and trusted sites as JSON. Nothing is uploaded.</p>
+            <button type="button" class="action" id="export-data">Export data</button>
+          </div>
+          <details class="settings-block dev-tools">
+            <summary>Developer tools</summary>
+            <p class="hint">For maintainers only. Tracker rules ship pre-generated in the extension package.</p>
+            <button type="button" class="action" id="regen-rules">Reload bundled threat rules</button>
+            <p class="hint" id="regen-status"></p>
+          </details>
+        </section>
+      </main>
+    </div>
+
+    <section id="watchers-view" aria-label="Who is watching you" aria-hidden="true">
+      <header class="watchers-top">
+        <button type="button" class="watchers-nav" id="watchers-back">Back</button>
+        <button type="button" class="watchers-nav watchers-nav--accent" id="watchers-dashboard">Full dashboard</button>
+      </header>
+      <div class="watchers-hero">
+        <div class="watchers-portal-art" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">
+            <circle cx="24" cy="24" r="6" />
+            <circle class="portal-ring" cx="24" cy="24" r="12" />
+            <circle class="portal-ring portal-ring--slow" cx="24" cy="24" r="18" />
+            <path d="M4 24h8" />
+            <path d="M36 24h8" />
+          </svg>
         </div>
-        <div class="glass-panel">
-          <h2>Page cleanup</h2>
-          <label class="setting-row">
-            <span>Hide leftover ad spaces</span>
-            <input type="checkbox" id="cosmetic-toggle" />
-          </label>
-          <p class="hint">Hides empty ad boxes after trackers are blocked. Local CSS only.</p>
-        </div>
-        <div class="glass-panel">
-          <h2>Trusted sites</h2>
-          <p class="hint">Same list as the popup’s “Trust this site” toggle.</p>
-          <form id="trust-form" class="trust-form">
-            <input id="trust-input" type="text" placeholder="example.com" autocomplete="off" />
-            <button type="submit" class="action">Add</button>
-          </form>
-          <p class="hint" id="trust-error" hidden></p>
-          <div id="whitelist-list"></div>
-        </div>
-        <div class="glass-panel">
-          <h2>Allowed trackers</h2>
-          <p class="hint">Single-tracker exceptions for a specific site.</p>
-          <div id="exception-list"></div>
-        </div>
-        <div class="glass-panel">
-          <h2>Export</h2>
-          <p class="hint">Download history, threat log, and trusted sites as JSON. Nothing is uploaded.</p>
-          <button type="button" class="action" id="export-data">Export data</button>
-        </div>
-        <details class="glass-panel dev-tools">
-          <summary>Developer tools</summary>
-          <p class="hint">For maintainers only. Tracker rules ship pre-generated in the extension package.</p>
-          <button type="button" class="action" id="regen-rules">Reload bundled threat rules</button>
-          <p class="hint" id="regen-status"></p>
-        </details>
-      </section>
-    </main>
+        <h1 class="watchers-title">Who's watching you</h1>
+        <p class="watchers-subtitle">Companies behind the trackers — last 7 days</p>
+      </div>
+      <div id="watchers-focus-list"></div>
+    </section>
+
+    <script src="glass-lattice.js"></script>
     <script src="options.js"></script>
   </body>
 </html>
