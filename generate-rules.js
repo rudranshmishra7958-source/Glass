@@ -3,19 +3,27 @@ const path = require("path");
 
 const ROOT = __dirname;
 const RULES_DIR = path.join(ROOT, "rules");
-const MAX_RULES = 25000;
-const EASYPRIVACY_URLS = [
-  "https://easylist.to/easylist/easyprivacy.txt",
-  "https://raw.githubusercontent.com/easylist/easylist/master/easyprivacy/easyprivacy_general.txt",
-  "https://raw.githubusercontent.com/easylist/easylist/master/easyprivacy/easyprivacy_specific.txt"
+const MAX_RULES = 30000;
+const MAX_COSMETIC = 3000;
+const FILTER_SOURCES = [
+  { url: "https://easylist.to/easylist/easylist.txt", cache: "easylist.txt" },
+  { url: "https://easylist.to/easylist/easyprivacy.txt", cache: "easyprivacy.txt" },
+  {
+    url: "https://raw.githubusercontent.com/easylist/easylist/master/easyprivacy/easyprivacy_general.txt",
+    cache: "easyprivacy_general.txt"
+  },
+  {
+    url: "https://raw.githubusercontent.com/easylist/easylist/master/easyprivacy/easyprivacy_specific.txt",
+    cache: "easyprivacy_specific.txt"
+  }
 ];
 
 const CATEGORY_ORDER = ["advertising", "analytics", "social", "other"];
 const RULE_ID_BASE = {
   advertising: 1,
-  analytics: 10001,
-  social: 20001,
-  other: 30001
+  analytics: 30001,
+  social: 60001,
+  other: 90001
 };
 
 const RESOURCE_TYPES = [
@@ -56,7 +64,10 @@ const CATEGORY_KEYWORDS = {
     "amazon-adsystem",
     "googlesyndication",
     "googleadservices",
-    "advertising"
+    "advertising",
+    "pagead",
+    "adservice",
+    "adserver"
   ],
   analytics: [
     "analytics",
@@ -116,6 +127,8 @@ const CATEGORY_KEYWORDS = {
   ]
 };
 
+const UNSAFE_COSMETIC = /:has\(|:-abp-|:xpath|:matches-path|:style\(|\+js\(|:remove\(|:upward|:nth-ancestor|:min-text-length|:watch-attr|:matches-attr|:matches-css|:matches-prop|:shadow|:is\(|:not\(|::|\[style/i;
+
 function normalizeHost(host) {
   return String(host || "")
     .toLowerCase()
@@ -123,7 +136,7 @@ function normalizeHost(host) {
     .replace(/^www\./, "");
 }
 
-function categorize(domain) {
+function categorize(domain, fallback = "other") {
   for (const category of ["advertising", "analytics", "social"]) {
     for (const keyword of CATEGORY_KEYWORDS[category]) {
       if (domain.includes(keyword)) {
@@ -131,14 +144,14 @@ function categorize(domain) {
       }
     }
   }
-  return "other";
+  return fallback;
 }
 
 function parseDomains(text) {
   const domains = new Set();
   for (const rawLine of text.split("\n")) {
     const line = rawLine.trim();
-    if (!line || line.startsWith("!") || line.startsWith("[")) {
+    if (!line || line.startsWith("!") || line.startsWith("[") || line.startsWith("@@")) {
       continue;
     }
     const match = line.match(/\|\|([^|^/$]+)\^/);
@@ -155,6 +168,36 @@ function parseDomains(text) {
     domains.add(domain);
   }
   return [...domains];
+}
+
+function parseCosmeticSelectors(text) {
+  const selectors = [];
+  const seen = new Set();
+  for (const rawLine of text.split("\n")) {
+    const line = rawLine.trim();
+    if (!line.startsWith("##") || line.startsWith("##^")) {
+      continue;
+    }
+    const selector = line.slice(2).trim();
+    if (!selector || selector.length > 180) {
+      continue;
+    }
+    if (UNSAFE_COSMETIC.test(selector)) {
+      continue;
+    }
+    if (!/^[a-zA-Z0-9.#\[\]="'*_\-\s>+~,^$|]+$/.test(selector)) {
+      continue;
+    }
+    if (seen.has(selector)) {
+      continue;
+    }
+    seen.add(selector);
+    selectors.push(selector);
+    if (selectors.length >= MAX_COSMETIC) {
+      break;
+    }
+  }
+  return selectors;
 }
 
 function buildRules(category, domains) {
@@ -178,29 +221,78 @@ function buildRules(category, domains) {
   return { rules, indexEntries };
 }
 
-async function main() {
-  console.log("Fetching EasyPrivacy…");
-  const domainSet = new Set();
-  for (const url of EASYPRIVACY_URLS) {
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.warn("Skip", url, response.status);
-      continue;
-    }
-    const text = await response.text();
-    for (const domain of parseDomains(text)) {
-      domainSet.add(domain);
-      if (domainSet.size >= MAX_RULES) {
-        break;
+async function fetchText(source) {
+  const cachePath = path.join(ROOT, ".filter-cache", source.cache);
+  if (fs.existsSync(cachePath) && fs.statSync(cachePath).size > 1000) {
+    console.log("Using cache", source.cache);
+    return fs.readFileSync(cachePath, "utf8");
+  }
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(source.url, {
+        headers: { "user-agent": "GlassFilterCompiler/1.0" }
+      });
+      if (!response.ok) {
+        console.warn("Skip", source.url, response.status);
+        return "";
+      }
+      return await response.text();
+    } catch (error) {
+      console.warn("Retry", source.url, attempt, error.message);
+      if (attempt === 3) {
+        return "";
       }
     }
-    console.log("Loaded from", url, "total", domainSet.size);
-    if (domainSet.size >= MAX_RULES) {
-      break;
-    }
   }
-  const allDomains = [...domainSet].slice(0, MAX_RULES);
-  console.log("Parsed domains:", allDomains.length);
+  return "";
+}
+
+function writeCosmeticSelectors(selectors) {
+  const body = selectors.map((selector) => JSON.stringify(selector)).join(",\n  ");
+  const source = `const COSMETIC_SELECTORS = [
+  ${body}
+];
+
+if (typeof self !== "undefined") {
+  self.COSMETIC_SELECTORS = COSMETIC_SELECTORS;
+}
+`;
+  fs.writeFileSync(path.join(ROOT, "cosmetic-selectors.js"), source, "utf8");
+}
+
+async function main() {
+  console.log("Fetching EasyList + EasyPrivacy…");
+  const domainMeta = new Map();
+  const cosmetics = [];
+  const seenCosmetic = new Set();
+  for (const source of FILTER_SOURCES) {
+    const text = await fetchText(source);
+    if (!text) {
+      continue;
+    }
+    const fromEasyList = source.cache === "easylist.txt";
+    for (const domain of parseDomains(text)) {
+      const fallback = fromEasyList ? "advertising" : "other";
+      const category = categorize(domain, fallback);
+      const existing = domainMeta.get(domain);
+      if (!existing || (existing === "other" && category !== "other")) {
+        domainMeta.set(domain, category);
+      }
+    }
+    if (cosmetics.length < MAX_COSMETIC) {
+      for (const selector of parseCosmeticSelectors(text)) {
+        if (seenCosmetic.has(selector)) {
+          continue;
+        }
+        seenCosmetic.add(selector);
+        cosmetics.push(selector);
+        if (cosmetics.length >= MAX_COSMETIC) {
+          break;
+        }
+      }
+    }
+    console.log("Loaded from", source.cache, "domains", domainMeta.size, "cosmetics", cosmetics.length);
+  }
 
   const buckets = {
     advertising: [],
@@ -208,9 +300,39 @@ async function main() {
     social: [],
     other: []
   };
-  for (const domain of allDomains) {
-    buckets[categorize(domain)].push(domain);
+  for (const [domain, category] of domainMeta) {
+    buckets[category].push(domain);
   }
+  const quotas = {
+    advertising: 16000,
+    analytics: 8000,
+    social: 2000,
+    other: 4000
+  };
+  const packed = {
+    advertising: buckets.advertising.slice(0, quotas.advertising),
+    analytics: buckets.analytics.slice(0, quotas.analytics),
+    social: buckets.social.slice(0, quotas.social),
+    other: buckets.other.slice(0, quotas.other)
+  };
+  let remaining = MAX_RULES - (
+    packed.advertising.length +
+    packed.analytics.length +
+    packed.social.length +
+    packed.other.length
+  );
+  for (const category of CATEGORY_ORDER) {
+    if (remaining <= 0) {
+      break;
+    }
+    const extra = buckets[category].slice(packed[category].length, packed[category].length + remaining);
+    packed[category].push(...extra);
+    remaining -= extra.length;
+  }
+  const preferredCount =
+    packed.advertising.length + packed.analytics.length + packed.social.length + packed.other.length;
+  Object.assign(buckets, packed);
+  console.log("Packed domains:", preferredCount);
 
   fs.mkdirSync(RULES_DIR, { recursive: true });
   const byId = {};
@@ -218,9 +340,12 @@ async function main() {
 
   for (const category of CATEGORY_ORDER) {
     const { rules, indexEntries } = buildRules(category, buckets[category]);
+    if (rules.length > 30000) {
+      throw new Error(category + " exceeds 30000 DNR rules");
+    }
     fs.writeFileSync(
       path.join(RULES_DIR, category + ".json"),
-      JSON.stringify(rules, null, 2),
+      JSON.stringify(rules),
       "utf8"
     );
     for (const entry of indexEntries) {
@@ -234,7 +359,7 @@ async function main() {
 
   const ruleIndexJs =
     "self.RULE_INDEX = self.RULE_INDEX || " +
-    JSON.stringify({ byId, entries }, null, 2) +
+    JSON.stringify({ byId, entries }) +
     ";\n";
   fs.writeFileSync(path.join(ROOT, "rule-index.js"), ruleIndexJs, "utf8");
 
@@ -263,7 +388,12 @@ function buildRuleIndex() {
 }
 `;
   fs.writeFileSync(path.join(ROOT, "tracker-list.js"), trackerListJs, "utf8");
-  console.log("Wrote rules/, rule-index.js, tracker-list.js");
+  writeCosmeticSelectors(cosmetics.length ? cosmetics : [
+    "div[id*='google_ads']",
+    ".adsbygoogle",
+    "ins.adsbygoogle"
+  ]);
+  console.log("Wrote rules/, rule-index.js, tracker-list.js, cosmetic-selectors.js");
 }
 
 main().catch((error) => {

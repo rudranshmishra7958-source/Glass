@@ -9,9 +9,9 @@ const RULESET_ID_BY_CATEGORY = {
 
 const RULE_ID_BASE = {
   "advertising": 1,
-  "analytics": 10001,
-  "social": 20001,
-  "other": 30001
+  "analytics": 30001,
+  "social": 60001,
+  "other": 90001
 };
 
 const THREAT_RULESET_ID = "ruleset_threats";

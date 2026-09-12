@@ -12,6 +12,7 @@
     "declarativeNetRequestFeedback",
     "downloads",
     "nativeMessaging",
+    "windows",
     "notifications",
     "alarms",
     "webNavigation"

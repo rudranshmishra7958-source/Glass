@@ -18,7 +18,10 @@
         <div class="landing-hero-copy">
           <h2 class="landing-headline">Glass sees what watches you.</h2>
           <p class="landing-subtitle">Every tracker. Every risk. Nothing hidden — not even from you.</p>
-          <button type="button" class="landing-enter" id="landing-enter">Enter</button>
+          <div class="landing-cta-row">
+            <button type="button" class="landing-enter" id="landing-enter">Enter</button>
+            <button type="button" class="landing-about" id="landing-about">Know about us</button>
+          </div>
           <button type="button" class="watchers-portal" id="landing-watchers-portal" aria-label="Open who is watching you">
             <span class="watchers-portal-art" aria-hidden="true">
               <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">
@@ -141,7 +144,7 @@
           </span>
           <div>
             <h3><span class="feature-title">Malware Scanning</span></h3>
-            <p>Local ClamAV and YARA scan every download on this device. High-risk files are flagged so you can delete them or keep going.</p>
+            <p>When ClamAV and YARA are installed on this device, Glass scans every download locally. High-risk files are flagged so you can delete them or keep going.</p>
           </div>
         </article>
       </div>
@@ -271,7 +274,7 @@
         <section class="panel" id="panel-downloads">
           <div class="workspace-panel">
             <h2 class="workspace-title">Download scans</h2>
-            <p class="workspace-intro hint">Local ClamAV and YARA verdicts for files this browser saved. Delete or keep each one.</p>
+            <p class="workspace-intro hint">Local scan verdicts for files this browser saved. ClamAV and YARA run when those engines are installed. Delete or keep each one.</p>
             <div id="downloads-list" class="table"></div>
           </div>
         </section>
@@ -339,6 +342,95 @@
         <p class="watchers-subtitle">Companies behind the trackers — last 7 days</p>
       </div>
       <div id="watchers-focus-list"></div>
+    </section>
+
+    <section id="about-view" aria-label="Know about Glass" aria-hidden="true">
+      <header class="watchers-top">
+        <button type="button" class="watchers-nav" id="about-back">Back</button>
+        <button type="button" class="watchers-nav watchers-nav--accent" id="about-dashboard">Enter dashboard</button>
+      </header>
+      <div class="about-hero">
+        <p class="about-kicker">About Glass</p>
+        <h1 class="watchers-title">What Glass is</h1>
+        <p class="watchers-subtitle">A local-first privacy layer that combines tracker blocking, phishing defense, download scanning, and company transparency — on this device.</p>
+      </div>
+
+      <section class="about-section" aria-labelledby="about-diagram-heading">
+        <h2 id="about-diagram-heading" class="about-section-title">How it works</h2>
+        <p class="about-section-lead">Click a layer to see what it does. Glass runs them together, not as separate apps.</p>
+        <div class="about-diagram">
+          <button type="button" class="about-node is-active" data-about-node="trackers" aria-pressed="true">
+            <span class="about-node-index">01</span>
+            <span class="about-node-label">Tracker blocking</span>
+          </button>
+          <button type="button" class="about-node" data-about-node="phishing" aria-pressed="false">
+            <span class="about-node-index">02</span>
+            <span class="about-node-label">Phishing shield</span>
+          </button>
+          <button type="button" class="about-node" data-about-node="scans" aria-pressed="false">
+            <span class="about-node-index">03</span>
+            <span class="about-node-label">Download scanning</span>
+          </button>
+          <button type="button" class="about-node" data-about-node="xray" aria-pressed="false">
+            <span class="about-node-index">04</span>
+            <span class="about-node-label">Company X-Ray</span>
+          </button>
+          <button type="button" class="about-node" data-about-node="local" aria-pressed="false">
+            <span class="about-node-index">05</span>
+            <span class="about-node-label">Local-first</span>
+          </button>
+        </div>
+        <div class="about-detail glass-panel" id="about-detail">
+          <h3 id="about-detail-title">Tracker blocking</h3>
+          <p id="about-detail-body">Declarative network rules stop advertising, analytics, social, and other trackers before they load — locally, in the browser.</p>
+        </div>
+      </section>
+
+      <section class="about-section" aria-labelledby="about-compare-heading">
+        <h2 id="about-compare-heading" class="about-section-title">Why this is different</h2>
+        <p class="about-section-lead">Most tools cover one slice. Glass combines the slices so you are not stitching together a blocker, an antivirus, and a privacy dashboard.</p>
+        <div class="about-compare">
+          <article class="about-compare-card glass-panel">
+            <h3>Typical ad blocker</h3>
+            <p>Stops trackers and ads on the network. Leaves phishing hosts and downloaded files to someone else.</p>
+          </article>
+          <article class="about-compare-card glass-panel">
+            <h3>Typical antivirus</h3>
+            <p>Scans files — often after they land, and often with a cloud lookup. Does not explain who is tracking you on the page.</p>
+          </article>
+          <article class="about-compare-card glass-panel about-compare-card--glass">
+            <h3>Glass</h3>
+            <p>Blocks trackers, stops known phishing hosts, scans downloads locally (ClamAV and YARA when installed), and maps companies behind the domains — without uploading your browsing data.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="about-section" aria-labelledby="about-benchmarks-heading">
+        <h2 id="about-benchmarks-heading" class="about-section-title">Benchmarks &amp; certificates</h2>
+        <p class="about-section-lead">Independent scores will live here when they are ready. These frames are placeholders until then.</p>
+        <div class="about-benchmarks">
+          <div class="about-benchmark">
+            <span class="about-benchmark-label">Ad blocking benchmark</span>
+            <span class="about-benchmark-hint">Certificate slot — benchmarks coming soon</span>
+          </div>
+          <div class="about-benchmark">
+            <span class="about-benchmark-label">Malware detection benchmark</span>
+            <span class="about-benchmark-hint">Certificate slot — benchmarks coming soon</span>
+          </div>
+          <div class="about-benchmark">
+            <span class="about-benchmark-label">Privacy audit</span>
+            <span class="about-benchmark-hint">Certificate slot — benchmarks coming soon</span>
+          </div>
+          <div class="about-benchmark">
+            <span class="about-benchmark-label">Phishing protection score</span>
+            <span class="about-benchmark-hint">Certificate slot — benchmarks coming soon</span>
+          </div>
+        </div>
+      </section>
+
+      <footer class="about-footer">
+        <p>© 2026 Glass. All rights reserved.</p>
+      </footer>
     </section>
 
     <script src="glass-lattice.js"></script>

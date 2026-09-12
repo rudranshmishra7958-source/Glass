@@ -21,6 +21,20 @@
       </div>
     </header>
 
+    <button type="button" class="scan-chip glass-panel" id="scan-chip" aria-label="Open download scan">
+      <span class="scan-chip-copy">
+        <span class="list-title">Download scan</span>
+        <span id="scan-panel">
+          <span class="empty" id="scan-empty">No downloads scanned yet.</span>
+        </span>
+      </span>
+      <span class="scan-chip-chevron" aria-hidden="true">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M4 6.5 8 10.5 12 6.5" />
+        </svg>
+      </span>
+    </button>
+
     <section class="pause-banner glass-panel" id="pause-banner" hidden>
       <p class="toggle-title">Protection is paused</p>
       <p class="toggle-hint" id="pause-hint">Blocking is off until you resume.</p>
@@ -71,13 +85,6 @@
     <section class="security-wrap glass-panel skeleton-target" id="security-wrap" hidden>
       <h2 class="list-title">Security warnings</h2>
       <div id="security-warnings"></div>
-    </section>
-
-    <section class="scan-wrap glass-panel" id="scan-wrap">
-      <h2 class="list-title">Download scan</h2>
-      <div id="scan-panel">
-        <p class="empty" id="scan-empty">No downloads scanned yet.</p>
-      </div>
     </section>
 
     <label class="toggle trust-toggle glass-panel">

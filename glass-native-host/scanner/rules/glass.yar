@@ -102,3 +102,76 @@ rule Suspicious_Obfuscation
     condition:
         2 of them
 }
+
+rule Suspicious_PowerShell_Encoded
+{
+    meta:
+        description = "Detects encoded or hidden PowerShell command patterns"
+        category = "process_execution"
+        severity = "suspicious"
+
+    strings:
+        $a = "-EncodedCommand" nocase
+        $b = "-enc " nocase
+        $c = "FromBase64String" nocase
+        $d = "IEX(" nocase
+        $e = "Invoke-Expression" nocase
+        $f = "DownloadString" nocase
+
+    condition:
+        2 of them
+}
+
+rule Suspicious_JS_Network
+{
+    meta:
+        description = "Detects JavaScript that both evaluates code and talks to the network"
+        category = "network"
+        severity = "suspicious"
+
+    strings:
+        $eval = "eval("
+        $fn = "Function("
+        $fetch = "fetch("
+        $xhr = "XMLHttpRequest"
+        $ws = "WebSocket"
+
+    condition:
+        1 of ($eval, $fn) and 1 of ($fetch, $xhr, $ws)
+}
+
+rule Suspicious_PE_Packed
+{
+    meta:
+        description = "Detects a Windows PE header with common packer or runtime strings"
+        category = "obfuscation"
+        severity = "informational"
+
+    strings:
+        $mz = "MZ"
+        $upx = "UPX0"
+        $upx2 = "UPX1"
+        $themida = "Themida"
+        $aspack = "aPLib"
+
+    condition:
+        $mz at 0 and 1 of ($upx, $upx2, $themida, $aspack)
+}
+
+rule Suspicious_Office_OLE_Macro
+{
+    meta:
+        description = "Detects Office OLE / VBA macro markers"
+        category = "macros"
+        severity = "suspicious"
+
+    strings:
+        $ole = { D0 CF 11 E0 A1 B1 1A E1 }
+        $vba = "VBA" ascii
+        $auto = "Auto_Open" nocase
+        $docopen = "Document_Open" nocase
+        $xlopen = "Workbook_Open" nocase
+
+    condition:
+        $ole at 0 and 1 of ($vba, $auto, $docopen, $xlopen)
+}

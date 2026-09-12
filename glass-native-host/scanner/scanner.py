@@ -83,6 +83,16 @@ def archive_info(path: Path) -> dict:
     return result
 
 
+def engine_status(clamav: dict, yara: dict) -> dict:
+    clam_status = clamav.get("status")
+    yara_status = yara.get("status")
+    return {
+        "clamav": clam_status not in {None, "unavailable", "error"},
+        "yara": yara_status == "completed",
+        "heuristics": True,
+    }
+
+
 def clamav_scan(path: Path) -> dict:
     try:
         result = subprocess.run(
@@ -224,36 +234,74 @@ def heuristic_scan(path: Path) -> list:
                 )
     except Exception:
         pass
+    archive = archive_info(path)
+    if archive.get("is_zip"):
+        names = [str(name).replace("\\", "/").lower() for name in archive.get("entries", [])]
+        if any(name.endswith("vbaproject.bin") or "/vba/" in name for name in names):
+            findings.append(
+                {
+                    "type": "office_macro",
+                    "message": "Archive contains an Office macro project (vbaProject.bin).",
+                }
+            )
+        if any(name.endswith((".js", ".jse", ".ps1", ".vbs", ".bat", ".cmd")) for name in names):
+            findings.append(
+                {
+                    "type": "script_in_zip",
+                    "message": "Archive contains script files (.js, .ps1, .vbs, or similar).",
+                }
+            )
+    if (
+        any(suffix in dangerous_extensions for suffix in suffixes)
+        and any(finding.get("type") == "high_entropy" for finding in findings)
+    ):
+        findings.append(
+            {
+                "type": "packed_executable",
+                "message": "Executable or script has high entropy, which can indicate packing.",
+            }
+        )
     return findings
 
 
 def classify_yara_matches(matches: list) -> set:
     categories = set()
     for match in matches:
-        if "Networking" in match:
+        if "Networking" in match or "JS_Network" in match:
             categories.add("network")
-        if "Process" in match:
+        if "Process" in match or "PowerShell" in match:
             categories.add("process_execution")
         if "Persistence" in match:
             categories.add("persistence")
-        if "Obfuscation" in match:
+        if "Obfuscation" in match or "Packed" in match:
             categories.add("obfuscation")
         if "File_Activity" in match:
             categories.add("file_activity")
+        if "Macro" in match or "OLE" in match:
+            categories.add("macros")
     return categories
 
 
-def build_assessment(clamav: dict, yara: dict, heuristics: list) -> dict:
+def build_assessment(clamav: dict, yara: dict, heuristics: list, eicar: bool = False) -> dict:
     score = 0
     evidence = []
     categories = classify_yara_matches(yara.get("matches", []))
+    clam_available = clamav.get("status") not in {None, "unavailable", "error"}
 
-    if clamav.get("detected"):
+    if clamav.get("detected") and clam_available:
         score += 90
         evidence.append(
             {
                 "source": "CLAMAV",
                 "message": "ClamAV identified a known malware signature.",
+            }
+        )
+    elif eicar:
+        score += 90
+        evidence.append(
+            {
+                "source": "EICAR",
+                "message": "EICAR antivirus test signature was found in the file.",
             }
         )
     if "network" in categories:
@@ -299,6 +347,14 @@ def build_assessment(clamav: dict, yara: dict, heuristics: list) -> dict:
                 "message": "Obfuscation or encoded-command patterns were detected.",
             }
         )
+    if "macros" in categories:
+        score += 18
+        evidence.append(
+            {
+                "source": "BEHAVIOR",
+                "message": "Office macro or OLE automation markers were detected.",
+            }
+        )
     if len(categories) >= 2:
         score += 10
         evidence.append(
@@ -325,9 +381,14 @@ def build_assessment(clamav: dict, yara: dict, heuristics: list) -> dict:
 
     for finding in heuristics:
         finding_type = finding.get("type")
-        bump = {"double_extension": 10, "filename": 3, "high_entropy": 5}.get(
-            finding_type, 0
-        )
+        bump = {
+            "double_extension": 10,
+            "filename": 3,
+            "high_entropy": 5,
+            "office_macro": 20,
+            "script_in_zip": 12,
+            "packed_executable": 12,
+        }.get(finding_type, 0)
         if bump:
             score += bump
             evidence.append(
@@ -339,10 +400,14 @@ def build_assessment(clamav: dict, yara: dict, heuristics: list) -> dict:
 
     score = min(score, 100)
 
-    if clamav.get("detected"):
+    if clamav.get("detected") and clam_available:
         risk = "CRITICAL"
         classification = "MALWARE_DETECTED"
         reason = "A known malware signature was detected by ClamAV."
+    elif eicar:
+        risk = "CRITICAL"
+        classification = "MALWARE_DETECTED"
+        reason = "EICAR test signature detected. This is a standard harmless AV test file."
     elif score >= 70:
         risk = "HIGH"
         classification = "HIGH_RISK"
@@ -391,15 +456,20 @@ def scan_path(path: Path) -> dict:
         return {"status": "error", "error": str(exc)}
 
     clam = clamav_scan(path)
-    if eicar_detected(path):
+    eicar = eicar_detected(path)
+    if eicar and not clam.get("detected"):
         clam = {
-            "status": "threat",
-            "detected": True,
-            "raw": "EICAR standard antivirus test file detected.",
+            **clam,
+            "eicar": True,
+            "raw": (clam.get("raw") or "")
+            + (" " if clam.get("raw") else "")
+            + "EICAR standard antivirus test file detected.",
         }
     yara = yara_scan(path)
     heuristics = heuristic_scan(path)
-    assessment = build_assessment(clamav=clam, yara=yara, heuristics=heuristics)
+    assessment = build_assessment(
+        clamav=clam, yara=yara, heuristics=heuristics, eicar=eicar
+    )
 
     return {
         "status": "completed",
@@ -411,11 +481,13 @@ def scan_path(path: Path) -> dict:
             "sha256": sha256(path),
             "entropy": entropy(path),
         },
+        "engines": engine_status(clam, yara),
         "static_analysis": {
             "clamav": clam,
             "yara": yara,
             "heuristics": heuristics,
             "archive": archive_info(path),
+            "eicar": eicar,
         },
         "dynamic_analysis": {
             "status": "skipped",

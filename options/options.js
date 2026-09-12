@@ -723,8 +723,16 @@ function initLandingReveal() {
   features.forEach((feature) => observer.observe(feature));
 }
 
+function hideAbout() {
+  const about = document.getElementById("about-view");
+  about?.setAttribute("aria-hidden", "true");
+  about?.classList.remove("is-revealed");
+  document.body.classList.remove("about-active");
+}
+
 function showDashboard(tab) {
   document.body.classList.remove("landing-active", "watchers-active");
+  hideAbout();
   document.body.classList.add("tool-active");
   document.getElementById("landing-view").setAttribute("aria-hidden", "true");
   document.getElementById("watchers-view").setAttribute("aria-hidden", "true");
@@ -739,6 +747,7 @@ function showDashboard(tab) {
 
 function showLanding() {
   document.body.classList.remove("tool-active", "watchers-active");
+  hideAbout();
   document.body.classList.add("landing-active");
   document.getElementById("landing-view").removeAttribute("aria-hidden");
   document.getElementById("dashboard-tool").setAttribute("aria-hidden", "true");
@@ -750,6 +759,7 @@ function showLanding() {
 
 async function showWatchers() {
   document.body.classList.remove("landing-active", "tool-active");
+  hideAbout();
   document.body.classList.add("watchers-active");
   document.getElementById("landing-view").setAttribute("aria-hidden", "true");
   document.getElementById("dashboard-tool").setAttribute("aria-hidden", "true");
@@ -764,6 +774,77 @@ async function showWatchers() {
     }
   }
   renderWatchersFocus(dashboardCache);
+}
+
+function showAbout() {
+  document.body.classList.remove("landing-active", "tool-active", "watchers-active");
+  document.body.classList.add("about-active");
+  document.getElementById("landing-view").setAttribute("aria-hidden", "true");
+  document.getElementById("dashboard-tool").setAttribute("aria-hidden", "true");
+  document.getElementById("watchers-view").setAttribute("aria-hidden", "true");
+  document.getElementById("watchers-view").classList.remove("is-revealed");
+  const about = document.getElementById("about-view");
+  about.removeAttribute("aria-hidden");
+  about.classList.remove("is-revealed");
+  window.GlassLattice?.stop();
+  syncLivePolling();
+  setAboutNode("trackers");
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      about.classList.add("is-revealed");
+    });
+  });
+}
+
+const ABOUT_NODES = {
+  trackers: {
+    title: "Tracker blocking",
+    body: "Declarative network rules stop advertising, analytics, social, and other trackers before they load — locally, in the browser."
+  },
+  phishing: {
+    title: "Phishing shield",
+    body: "Known phishing and malware hosts are blocked on the way in. Redirects you dodge stay in a local threat log on this device."
+  },
+  scans: {
+    title: "Download scanning",
+    body: "After a file finishes downloading, a local native host can run ClamAV and YARA when those engines are installed, then you can delete a high-risk file or keep going."
+  },
+  xray: {
+    title: "Company X-Ray",
+    body: "Glass maps tracker domains back to the companies behind them, so you see who is watching — not just which host fired."
+  },
+  local: {
+    title: "Local-first",
+    body: "Visit history, threat log, trusted sites, and scan records stay on this device. Glass does not upload your browsing data."
+  }
+};
+
+function setAboutNode(key) {
+  const copy = ABOUT_NODES[key] || ABOUT_NODES.trackers;
+  document.getElementById("about-detail-title").textContent = copy.title;
+  document.getElementById("about-detail-body").textContent = copy.body;
+  document.querySelectorAll(".about-node").forEach((node) => {
+    const active = node.dataset.aboutNode === key;
+    node.classList.toggle("is-active", active);
+    node.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function initAboutDiagram() {
+  const diagram = document.querySelector(".about-diagram");
+  if (!diagram) {
+    return;
+  }
+  diagram.addEventListener("click", (event) => {
+    const node = event.target.closest(".about-node");
+    if (!node) {
+      return;
+    }
+    setAboutNode(node.dataset.aboutNode);
+  });
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.getElementById("about-view")?.classList.add("is-revealed");
+  }
 }
 
 function initCubeSpinners() {
@@ -785,6 +866,7 @@ function initCubeSpinners() {
 }
 
 document.getElementById("landing-enter").addEventListener("click", () => showDashboard());
+document.getElementById("landing-about").addEventListener("click", showAbout);
 document.getElementById("brand-home").addEventListener("click", showLanding);
 document.getElementById("landing-watchers-portal").addEventListener("click", () => {
   showWatchers().catch((error) => console.error(error));
@@ -794,6 +876,8 @@ document.getElementById("overview-watchers-all").addEventListener("click", () =>
 });
 document.getElementById("watchers-back").addEventListener("click", showLanding);
 document.getElementById("watchers-dashboard").addEventListener("click", () => showDashboard("overview"));
+document.getElementById("about-back").addEventListener("click", showLanding);
+document.getElementById("about-dashboard").addEventListener("click", () => showDashboard("overview"));
 document.getElementById("landing-xray").addEventListener("click", () => {
   showWatchers().catch((error) => console.error(error));
 });
@@ -804,6 +888,7 @@ document.getElementById("landing-xray").addEventListener("keydown", (event) => {
   }
 });
 initLandingReveal();
+initAboutDiagram();
 initCubeSpinners();
 
 load().catch((error) => {

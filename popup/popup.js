@@ -38,21 +38,11 @@ const pauseControlsEl = document.getElementById("pause-controls");
 const resumeBtn = document.getElementById("resume-protection");
 const blockNowBtn = document.getElementById("block-now");
 const scanPanelEl = document.getElementById("scan-panel");
+const scanChipEl = document.getElementById("scan-chip");
 let currentTabId = null;
 let reloadWatcher = null;
 
 let currentHost = null;
-
-function shortHash(hash) {
-  const value = String(hash || "");
-  if (!value) {
-    return "";
-  }
-  if (value.length <= 20) {
-    return value;
-  }
-  return `${value.slice(0, 10)}…${value.slice(-8)}`;
-}
 
 function latestScanFrom(scans, history) {
   if (Array.isArray(history) && history[0]) {
@@ -68,38 +58,24 @@ function renderDownloadScan(scan) {
     return;
   }
   if (!scan) {
-    scanPanelEl.innerHTML = `<p class="empty">No downloads scanned yet.</p>`;
+    scanPanelEl.innerHTML = `<span class="empty">No downloads scanned yet.</span>`;
     return;
   }
   if (scan.status === "scanning") {
-    scanPanelEl.innerHTML = `<p class="scan-pulse">Scanning ${escapeHtml(scan.filename || "download")}…</p>`;
+    scanPanelEl.innerHTML = `<span class="scan-pulse">Scanning ${escapeHtml(scan.filename || "download")}…</span>`;
     return;
   }
   if (scan.status === "error") {
-    scanPanelEl.innerHTML = `<p class="scan-reason">${escapeHtml(scan.error || "Scan failed.")}</p>`;
+    scanPanelEl.innerHTML = `<span class="empty">${escapeHtml(scan.error || "Scan failed.")}</span>`;
     return;
   }
   const risk = scan.risk || scan.report?.assessment?.risk || "UNKNOWN";
-  const reason = scan.report?.assessment?.reason || scan.error || "";
-  const hash = shortHash(scan.report?.file?.sha256);
-  const evidence = (scan.report?.assessment?.evidence || [])
-    .slice(0, 3)
-    .map((item) => `<p class="scan-reason">${escapeHtml(item.message || "")}</p>`)
-    .join("");
-  const actions =
-    scan.action === "deleted"
-      ? `<p class="scan-reason">File removed from Downloads.</p>`
-      : `<div class="scan-actions">
-          <button type="button" class="scan-delete" data-scan-action="delete" data-download-id="${Number(scan.downloadId)}">Delete file</button>
-          <button type="button" data-scan-action="show" data-download-id="${Number(scan.downloadId)}">Download anyway</button>
-        </div>`;
+  const name = scan.action === "deleted" ? `${scan.filename || "download"} · removed` : scan.filename || "download";
   scanPanelEl.innerHTML = `
-    <p class="scan-risk" data-risk="${escapeHtml(risk)}">${escapeHtml(risk)}</p>
-    <p class="scan-name">${escapeHtml(scan.filename || "download")}</p>
-    <p class="scan-reason">${escapeHtml(reason)}</p>
-    ${hash ? `<p class="scan-hash">${escapeHtml(hash)}</p>` : ""}
-    ${evidence}
-    ${actions}
+    <span class="scan-chip-meta">
+      <span class="scan-risk" data-risk="${escapeHtml(risk)}">${escapeHtml(risk)}</span>
+      <span class="scan-name">${escapeHtml(name)}</span>
+    </span>
   `;
 }
 
@@ -496,20 +472,14 @@ load().catch((error) => {
   console.error(error);
 });
 
-scanPanelEl?.addEventListener("click", async (event) => {
-  const button = event.target.closest("[data-scan-action]");
-  if (!button) {
-    return;
-  }
-  const downloadId = Number(button.dataset.downloadId);
-  const type = button.dataset.scanAction === "delete" ? "DELETE_SCANNED_FILE" : "SHOW_SCANNED_FILE";
-  button.disabled = true;
-  const result = await chrome.runtime.sendMessage({ type, downloadId });
-  if (!result?.ok) {
-    button.disabled = false;
-    return;
-  }
-  await loadDownloadScan();
+scanChipEl?.addEventListener("click", () => {
+  chrome.windows.create({
+    url: chrome.runtime.getURL("popup/scan.html"),
+    type: "popup",
+    width: 420,
+    height: 560,
+    focused: true
+  });
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
