@@ -1,0 +1,14 @@
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\offline-vault.html","LineNumber":524,"LineContent":"      isItemModalOpen: false,"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\offline-vault.html","LineNumber":855,"LineContent":"      const openAdd = () =\u003e openItemModal(null);"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\offline-vault.html","LineNumber":889,"LineContent":"          btn.onclick = () =\u003e openItemModal(item);"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\offline-vault.html","LineNumber":980,"LineContent":"    function openItemModal(editingItem) {"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\offline-vault.html","LineNumber":1320,"LineContent":"          openItemModal(item);"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\README.md","LineNumber":49,"LineContent":"        ├── ItemModal.jsx          # Add / edit credential modal with inline generator"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\src\\components\\ItemModal.jsx","LineNumber":7,"LineContent":"export function ItemModal({ isOpen, onClose, editingItem }) {"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\src\\App.jsx","LineNumber":8,"LineContent":"import { ItemModal } from './components/ItemModal';"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\src\\App.jsx","LineNumber":21,"LineContent":"  const [isItemModalOpen, setIsItemModalOpen] = useState(false);"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\src\\App.jsx","LineNumber":69,"LineContent":"    setIsItemModalOpen(true);"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\src\\App.jsx","LineNumber":74,"LineContent":"    setIsItemModalOpen(true);"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\src\\App.jsx","LineNumber":108,"LineContent":"      \u003cItemModal"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\src\\App.jsx","LineNumber":109,"LineContent":"        isOpen={isItemModalOpen}"}
+{"File":"C:\\Users\\vijay\\.gemini\\antigravity\\scratch\\offline-password-manager\\src\\App.jsx","LineNumber":110,"LineContent":"        onClose={() =\u003e setIsItemModalOpen(false)}"}

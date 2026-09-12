@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Offline Vault - Password Manager",
+  "version": "1.1.0",
+  "description": "100% offline, zero-network password manager with AES-256 local encryption, in-page autofill, and browser session persistence.",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "options_page": "vault.html",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'none';"
+  }
+}

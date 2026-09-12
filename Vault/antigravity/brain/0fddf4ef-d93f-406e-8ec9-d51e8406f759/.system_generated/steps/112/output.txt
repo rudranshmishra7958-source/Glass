@@ -1,0 +1,12 @@
+{"name":"README.md","sizeBytes":"1902"}
+{"name":"background.js","sizeBytes":"4505"}
+{"name":"content.css","sizeBytes":"2459"}
+{"name":"content.js","sizeBytes":"7145"}
+{"name":"crypto.js","sizeBytes":"4340"}
+{"name":"manifest.json","sizeBytes":"983"}
+{"name":"popup.css","sizeBytes":"4399"}
+{"name":"popup.html","sizeBytes":"327"}
+{"name":"popup.js","sizeBytes":"17027"}
+{"name":"storage.js","sizeBytes":"1058"}
+
+Summary: This directory contains 0 subdirectories and 10 files.

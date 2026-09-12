@@ -1,0 +1,13 @@
+{"name":"Icons.jsx","sizeBytes":"10231"}
+{"name":"ItemCard.jsx","sizeBytes":"8327"}
+{"name":"ItemList.jsx","sizeBytes":"3279"}
+{"name":"ItemModal.jsx","sizeBytes":"12662"}
+{"name":"Navbar.jsx","sizeBytes":"2675"}
+{"name":"PasswordGeneratorModal.jsx","sizeBytes":"7696"}
+{"name":"SecurityAuditModal.jsx","sizeBytes":"8956"}
+{"name":"SettingsModal.jsx","sizeBytes":"14303"}
+{"name":"Sidebar.jsx","sizeBytes":"3358"}
+{"name":"Toast.jsx","sizeBytes":"1817"}
+{"name":"UnlockScreen.jsx","sizeBytes":"7038"}
+
+Summary: This directory contains 0 subdirectories and 11 files.

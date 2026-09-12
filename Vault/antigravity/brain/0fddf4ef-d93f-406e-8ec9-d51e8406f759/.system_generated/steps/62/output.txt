@@ -1,0 +1,8 @@
+{"name":"App.jsx","sizeBytes":"4468"}
+{"name":"components","isDir":true}
+{"name":"context","isDir":true}
+{"name":"index.css","sizeBytes":"12767"}
+{"name":"main.jsx","sizeBytes":"235"}
+{"name":"services","isDir":true}
+
+Summary: This directory contains 3 subdirectories and 3 files.

@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
+  <title>SafeBox File Scanner</title>
+
+  <link
+    rel="stylesheet"
+    href="popup.css"
+  >
+</head>
+
+
+<body>
+
+  <header class="topbar">
+
+    <div class="brand">
+
+      <div class="shield">
+        🛡
+      </div>
+
+      <div class="brand-copy">
+
+        <h1>
+          SafeBox
+        </h1>
+
+        <p>
+          Local File Scanner
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div class="engine">
+
+      <span></span>
+
+      LOCAL ENGINE
+
+    </div>
+
+  </header>
+
+
+  <main>
+
+
+    <!-- =================================================
+         SCANNER
+    ================================================== -->
+
+    <section class="panel">
+
+      <span class="eyebrow">
+        FILE ANALYSIS
+      </span>
+
+      <h3>
+        Scan an existing file
+      </h3>
+
+      <p class="hint scanner-description">
+        Select a file to analyze it locally using
+        ClamAV, YARA and SafeBox heuristics.
+        Files are never executed.
+      </p>
+
+
+      <input
+        id="fileInput"
+        type="file"
+        hidden
+      >
+
+
+      <button
+        id="chooseFile"
+        class="btn secondary"
+        type="button"
+      >
+        📄 Choose File
+      </button>
+
+
+      <div
+        id="selectedFile"
+        class="selected hidden"
+      >
+
+        <span id="selectedName">
+          —
+        </span>
+
+        <span id="selectedSize">
+          —
+        </span>
+
+      </div>
+
+
+      <button
+        id="scanFile"
+        class="btn primary"
+        type="button"
+        disabled
+      >
+        🔍 Scan File
+      </button>
+
+
+      <p class="hint">
+        Maximum manual scan size: 100 KB.
+      </p>
+
+    </section>
+
+
+    <!-- =================================================
+         RESULT
+    ================================================== -->
+
+    <section
+      id="result"
+      class="hidden"
+    >
+
+      <section class="panel file-card">
+
+        <div class="file-info">
+
+          <span class="eyebrow">
+            SCAN RESULT
+          </span>
+
+          <h2 id="filename">
+            —
+          </h2>
+
+          <p id="filemeta">
+            —
+          </p>
+
+        </div>
+
+
+        <div
+          id="riskBadge"
+          class="risk"
+        >
+          UNKNOWN
+        </div>
+
+      </section>
+
+
+      <div class="grid">
+
+        <div class="metric panel">
+
+          <span>
+            CLAMAV
+          </span>
+
+          <strong id="clamav">
+            —
+          </strong>
+
+        </div>
+
+
+        <div class="metric panel">
+
+          <span>
+            YARA
+          </span>
+
+          <strong id="yara">
+            —
+          </strong>
+
+        </div>
+
+
+        <div class="metric panel">
+
+          <span>
+            SHA-256
+          </span>
+
+          <strong id="hash">
+            —
+          </strong>
+
+        </div>
+
+
+        <div class="metric panel">
+
+          <span>
+            SCORE
+          </span>
+
+          <strong id="score">
+            —
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <section class="panel">
+
+        <div class="row">
+
+          <div class="assessment-title">
+
+            <span class="eyebrow">
+              ASSESSMENT
+            </span>
+
+            <h3 id="reason">
+              —
+            </h3>
+
+          </div>
+
+        </div>
+
+
+        <div
+          id="evidence"
+          class="evidence"
+        ></div>
+
+      </section>
+
+
+      <section class="panel details-panel">
+
+        <span class="eyebrow">
+          ANALYSIS
+        </span>
+
+        <h3>
+          Detailed Evidence
+        </h3>
+
+
+        <div
+          id="details"
+          class="details"
+          role="region"
+          aria-label="Detailed scan evidence"
+        ></div>
+
+      </section>
+
+    </section>
+
+
+    <!-- =================================================
+         STATUS
+    ================================================== -->
+
+    <section
+      id="statusPanel"
+      class="panel hidden"
+    >
+
+      <span class="eyebrow">
+        ENGINE
+      </span>
+
+      <h3 id="statusText">
+        —
+      </h3>
+
+    </section>
+
+  </main>
+
+
+  <footer>
+    SafeBox • Local Analysis • Privacy First
+  </footer>
+
+
+  <script src="scanner.js"></script>
+
+</body>
+
+</html>

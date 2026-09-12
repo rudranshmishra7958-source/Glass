@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline Password Vault (100% Local & Encrypted)</title>
+  <!-- Strict zero-network Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; connect-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline';" />
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-card: #111827;
+      --bg-card-hover: #172033;
+      --bg-input: #1a2234;
+      --border-color: #26334d;
+      --border-focus: #10b981;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --primary: #10b981;
+      --primary-hover: #059669;
+      --primary-light: rgba(16, 185, 129, 0.15);
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --danger-light: rgba(239, 68, 68, 0.15);
+      --warning: #f59e0b;
+      --warning-light: rgba(245, 158, 11, 0.15);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 1.75rem;
+      background-color: rgba(17, 24, 39, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: var(--text-primary);
+    }
+    .nav-search {
+      position: relative;
+      max-width: 400px;
+      width: 100%;
+      margin: 0 1.5rem;
+    }
+    .nav-search input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.5rem 1rem 0.5rem 2.5rem;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+    }
+    .nav-search input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .search-icon-pos {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+    }
+    .nav-actions { display: flex; align-items: center; gap: 0.65rem; }
+
+    /* Layout */
+    .main-layout {
+      display: flex;
+      flex: 1;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .sidebar {
+      width: 250px;
+      border-right: 1px solid var(--border-color);
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      flex-shrink: 0;
+    }
+    .sidebar-heading {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      padding-left: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0.85rem;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text-secondary);
+      border: none;
+      font-size: 0.92rem;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s ease;
+    }
+    .sidebar-item:hover { background: var(--bg-card); color: var(--text-primary); }
+    .sidebar-item.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.1rem 0.5rem;
+      border-radius: 9999px;
+      background: var(--bg-input);
+      color: var(--text-secondary);
+    }
+
+    .content-area {
+      flex: 1;
+      padding: 1.75rem 2rem;
+      overflow-y: auto;
+    }
+    .content-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .content-title { font-size: 1.4rem; font-weight: 700; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.9rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-primary { background: var(--primary); color: #042f2e; font-weight: 600; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--bg-input); border-color: var(--border-color); color: var(--text-primary); }
+    .btn-secondary:hover { background: var(--bg-card-hover); }
+    .btn-danger { background: var(--danger-light); color: var(--danger); border-color: rgba(239,68,68,0.3); }
+    .btn-danger:hover { background: var(--danger); color: white; }
+    .btn-icon {
+      padding: 0.55rem;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text-secondary);
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-icon:hover { background: var(--bg-input); color: var(--text-primary); }
+
+    /* Cards */
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    .item-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .item-card:hover { transform: translateY(-2px); border-color: #374665; }
+    .item-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+    .item-title-wrap { display: flex; align-items: center; gap: 0.75rem; overflow: hidden; }
+    .item-category-icon {
+      width: 36px; height: 36px; border-radius: var(--radius-md);
+      background: var(--primary-light); color: var(--primary);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .item-title { font-size: 1.05rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-fields {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      background: var(--bg-input); border-radius: var(--radius-md); padding: 0.75rem;
+    }
+    .field-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; gap: 0.5rem; }
+    .field-label { color: var(--text-muted); width: 70px; flex-shrink: 0; }
+    .field-value {
+      color: var(--text-primary); font-family: ui-monospace, monospace;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+    }
+    .item-card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.8rem; color: var(--text-muted);
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(4, 7, 13, 0.75);
+      backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center;
+      z-index: 50; padding: 1rem;
+    }
+    .modal-card {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg); width: 100%; max-width: 520px;
+      box-shadow: var(--shadow); display: flex; flex-direction: column;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color);
+      font-weight: 700; font-size: 1.15rem;
+    }
+    .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+    .modal-footer {
+      padding: 1rem 1.5rem; border-top: 1px solid var(--border-color);
+      display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem;
+      background: rgba(17, 24, 39, 0.5);
+    }
+
+    /* Forms */
+    .form-group { display: flex; flex-direction: column; gap: 0.45rem; }
+    .form-label { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
+    .form-input, .form-select, .form-textarea {
+      background: var(--bg-input); border: 1px solid var(--border-color);
+      border-radius: var(--radius-md); padding: 0.65rem 0.85rem;
+      color: var(--text-primary); font-size: 0.92rem; font-family: inherit;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none; border-color: var(--primary);
+    }
+    .input-with-action { display: flex; position: relative; }
+    .input-with-action .form-input { width: 100%; padding-right: 4.5rem; }
+    .input-action-buttons { position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%); display: flex; }
+
+    /* Strength meter */
+    .strength-meter { display: flex; gap: 4px; height: 4px; margin-top: 0.35rem; }
+    .strength-bar { flex: 1; border-radius: 2px; background: var(--bg-input); transition: background 0.2s; }
+    .strength-bar.weak { background: var(--danger); }
+    .strength-bar.medium { background: var(--warning); }
+    .strength-bar.strong { background: var(--primary); }
+
+    /* Lock Screen */
+    .lock-screen-wrapper {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem; background: radial-gradient(circle at top, #111e33 0%, #090d16 100%);
+    }
+    .lock-card {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg); padding: 2.5rem; width: 100%; max-width: 440px;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); display: flex; flex-direction: column;
+      gap: 1.75rem; text-align: center;
+    }
+    .lock-logo-badge {
+      width: 64px; height: 64px; border-radius: 16px; background: var(--primary-light);
+      color: var(--primary); display: flex; align-items: center; justify-content: center; margin: 0 auto;
+    }
+
+    /* Toasts */
+    .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 100; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast {
+      background: #1e293b; color: var(--text-primary); padding: 0.75rem 1.25rem;
+      border-radius: var(--radius-md); border: 1px solid var(--border-color);
+      box-shadow: var(--shadow); display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem;
+    }
+    .toast-success { border-color: var(--primary); }
+    .toast-danger { border-color: var(--danger); }
+
+    .shake { animation: shake 0.4s ease-in-out; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    /**
+     * OFFLINE PASSWORD MANAGER - STANDALONE EDITION
+     * Pure browser client. Native Web Crypto API + IndexedDB.
+     * Zero external dependencies. Zero network calls.
+     */
+
+    // --- CRYPTOGRAPHY LAYER ---
+    const CANARY_SECRET = '__OFFLINE_VAULT_CANARY_OK__';
+    const PBKDF2_ITERATIONS = 100000;
+
+    function bufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return window.btoa(binary);
+    }
+
+    function base64ToBuffer(base64) {
+      const binary = window.atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    function generateSalt(length = 16) {
+      const salt = new Uint8Array(length);
+      window.crypto.getRandomValues(salt);
+      return bufferToBase64(salt);
+    }
+
+    async function deriveMasterKey(masterPassword, saltBase64) {
+      const encoder = new TextEncoder();
+      const passwordKey = await window.crypto.subtle.importKey(
+        'raw', encoder.encode(masterPassword), { name: 'PBKDF2' }, false, ['deriveKey']
+      );
+      const salt = base64ToBuffer(saltBase64);
+      return await window.crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+        passwordKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    }
+
+    async function encryptPayload(data, key) {
+      const encoder = new TextEncoder();
+      const iv = new Uint8Array(12);
+      window.crypto.getRandomValues(iv);
+      const encryptedBuffer = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv }, key, encoder.encode(JSON.stringify(data))
+      );
+      return { ciphertext: bufferToBase64(encryptedBuffer), iv: bufferToBase64(iv) };
+    }
+
+    async function decryptPayload(encryptedObj, key) {
+      const ivBuffer = base64ToBuffer(encryptedObj.iv);
+      const dataBuffer = base64ToBuffer(encryptedObj.ciphertext);
+      const decrypted = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: ivBuffer }, key, dataBuffer
+      );
+      return JSON.parse(new TextDecoder().decode(decrypted));
+    }
+
+    // --- INDEXEDDB STORAGE LAYER ---
+    const DB_NAME = 'OfflinePasswordManagerDB';
+    let dbInstance = null;
+
+    function getDB() {
+      if (dbInstance) return Promise.resolve(dbInstance);
+      return new Promise((resolve, reject) => {
+        const req = window.indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('items')) db.createObjectStore('items', { keyPath: 'id' });
+        };
+        req.onsuccess = (e) => { dbInstance = e.target.result; resolve(dbInstance); };
+        req.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    async function getStoredMeta() {
+      const db = await getDB();
+      return new Promise((res, rej) => {
+        const tx = db.transaction('meta', 'readonly');
+        const req = tx.objectStore('meta').get('auth');
+        req.onsuccess = () => res(req.result || null);
+        req.onerror = () => rej(req.error);
+      });
+    }
+
+    async function saveStoredMeta(meta) {
+      const db = await getDB();
+      return new Promise((res, rej) => {
+        const tx = db.transaction('meta', 'readwrite');
+        const req = tx.objectStore('meta').put({ id: 'auth', ...meta, updatedAt: new Date().toISOString() });
+        req.onsuccess = () => res(true);
+        req.onerror = () => rej(req.error);
+      });
+    }
+
+    async function getStoredItems() {
+      const db = await getDB();
+      return new Promise((res, rej) => {
+        const tx = db.transaction('items', 'readonly');
+        const req = tx.objectStore('items').getAll();
+        req.onsuccess = () => res(req.result || []);
+        req.onerror = () => rej(req.error);
+      });
+    }
+
+    async function saveStoredItem(item) {
+      const db = await getDB();
+      return new Promise((res, rej) => {
+        const tx = db.transaction('items', 'readwrite');
+        const req = tx.objectStore('items').put({ ...item, updatedAt: new Date().toISOString() });
+        req.onsuccess = () => res(true);
+        req.onerror = () => rej(req.error);
+      });
+    }
+
+    async function deleteStoredItem(id) {
+      const db = await getDB();
+      return new Promise((res, rej) => {
+        const tx = db.transaction('items', 'readwrite');
+        const req = tx.objectStore('items').delete(id);
+        req.onsuccess = () => res(true);
+        req.onerror = () => rej(req.error);
+      });
+    }
+
+    async function clearAllStoredData() {
+      const db = await getDB();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(['meta', 'items'], 'readwrite');
+        tx.objectStore('meta').clear();
+        tx.objectStore('items').clear();
+        tx.oncomplete = () => res(true);
+        tx.onerror = () => rej(tx.error);
+      });
+    }
+
+    // --- GENERATOR & EVALUATOR ---
+    function generateSecurePassword({ length = 18, useLower = true, useUpper = true, useNumbers = true, useSymbols = true, avoidAmbiguous = false } = {}) {
+      let lower = 'abcdefghijklmnopqrstuvwxyz';
+      let upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      let nums = '0123456789';
+      let syms = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+      if (avoidAmbiguous) {
+        lower = lower.replace(/[il1]/g, '');
+        upper = upper.replace(/[IO]/g, '');
+        nums = nums.replace(/[01]/g, '');
+        syms = syms.replace(/[{}[\]()/\\'"`~,;:.<>]/g, '');
+      }
+      let pool = '';
+      const guaranteed = [];
+      const getRand = (max) => {
+        const arr = new Uint32Array(1);
+        window.crypto.getRandomValues(arr);
+        return arr[0] % max;
+      };
+      if (useLower) { pool += lower; guaranteed.push(lower[getRand(lower.length)]); }
+      if (useUpper) { pool += upper; guaranteed.push(upper[getRand(upper.length)]); }
+      if (useNumbers) { pool += nums; guaranteed.push(nums[getRand(nums.length)]); }
+      if (useSymbols) { pool += syms; guaranteed.push(syms[getRand(syms.length)]); }
+      if (!pool) { pool = lower; guaranteed.push(lower[getRand(lower.length)]); }
+
+      const res = [...guaranteed];
+      while (res.length < length) res.push(pool[getRand(pool.length)]);
+      for (let i = res.length - 1; i > 0; i--) {
+        const j = getRand(i + 1);
+        [res[i], res[j]] = [res[j], res[i]];
+      }
+      return res.join('');
+    }
+
+    function evaluateStrength(pwd) {
+      if (!pwd) return { score: 0, label: 'Empty', color: 'var(--text-muted)', bits: 0 };
+      let pool = 0;
+      if (/[a-z]/.test(pwd)) pool += 26;
+      if (/[A-Z]/.test(pwd)) pool += 26;
+      if (/[0-9]/.test(pwd)) pool += 10;
+      if (/[^a-zA-Z0-9]/.test(pwd)) pool += 32;
+      const bits = Math.floor(pwd.length * Math.log2(pool || 1));
+      if (pwd.length < 8 || bits < 40) return { score: 1, label: 'Weak', color: 'var(--danger)', bits };
+      if (pwd.length < 12 || bits < 60) return { score: 2, label: 'Fair', color: 'var(--warning)', bits };
+      if (pwd.length < 16 || bits < 80) return { score: 3, label: 'Strong', color: 'var(--primary)', bits };
+      return { score: 4, label: 'Very Strong', color: '#34d399', bits };
+    }
+
+    // --- APPLICATION STATE ---
+    const state = {
+      vaultStatus: 'loading', // 'loading' | 'uninitialized' | 'locked' | 'unlocked'
+      items: [],
+      masterKey: null,
+      meta: null,
+      activeCategory: 'all',
+      searchQuery: '',
+      autoLockMinutes: 15,
+      lastActive: Date.now(),
+      // Modals
+      isItemModalOpen: false,
+      editingItem: null,
+      isGeneratorOpen: false,
+      isSettingsOpen: false,
+      isAuditOpen: false,
+      revealedPasswords: {}
+    };
+
+    // Toasts
+    function showToast(message, type = 'success') {
+      let container = document.querySelector('.toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+      }
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => { toast.remove(); }, 2500);
+    }
+
+    // Lock Vault
+    function lockVault() {
+      state.masterKey = null;
+      state.items = [];
+      state.revealedPasswords = {};
+      state.vaultStatus = 'locked';
+      render();
+      showToast('Vault locked.');
+    }
+
+    // Initialize
+    async function initVault() {
+      try {
+        const meta = await getStoredMeta();
+        if (!meta || !meta.salt || !meta.canary) {
+          state.vaultStatus = 'uninitialized';
+        } else {
+          state.meta = meta;
+          state.autoLockMinutes = meta.autoLockMinutes || 15;
+          state.vaultStatus = 'locked';
+        }
+      } catch (err) {
+        state.vaultStatus = 'uninitialized';
+      }
+      render();
+    }
+
+    // Auto-lock timer
+    setInterval(() => {
+      if (state.vaultStatus === 'unlocked' && state.autoLockMinutes > 0) {
+        if (Date.now() - state.lastActive > state.autoLockMinutes * 60 * 1000) {
+          lockVault();
+        }
+      }
+    }, 10000);
+    ['mousemove', 'keydown', 'touchstart'].forEach(evt => {
+      window.addEventListener(evt, () => { state.lastActive = Date.now(); });
+    });
+
+    // --- UI RENDERER ---
+    function render() {
+      const app = document.getElementById('app');
+      if (state.vaultStatus === 'loading') {
+        app.innerHTML = `
+          <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;">
+            <div style="color:var(--primary);font-size:1.2rem;font-weight:600;">Loading encrypted vault...</div>
+          </div>`;
+        return;
+      }
+
+      if (state.vaultStatus === 'uninitialized' || state.vaultStatus === 'locked') {
+        renderUnlockScreen(app);
+        return;
+      }
+
+      renderDashboard(app);
+    }
+
+    function renderUnlockScreen(container) {
+      const isSetup = state.vaultStatus === 'uninitialized';
+      container.innerHTML = `
+        <div class="lock-screen-wrapper">
+          <div class="lock-card" id="lock-card">
+            <div class="lock-logo-badge">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div>
+              <h1 style="font-size:1.5rem;font-weight:700;margin-bottom:0.35rem;">
+                ${isSetup ? 'Create Your Master Password' : 'Vault Locked'}
+              </h1>
+              <p style="color:var(--text-secondary);font-size:0.9rem;">
+                ${isSetup ? 'Encrypt all your passwords locally with AES-256-GCM.' : 'Enter master password to unlock your offline data.'}
+              </p>
+            </div>
+            <div id="unlock-err" style="display:none;padding:0.65rem;border-radius:var(--radius-md);background:var(--danger-light);color:var(--danger);font-size:0.85rem;"></div>
+            <form id="unlock-form" style="display:flex;flex-direction:column;gap:1rem;text-align:left;">
+              <div class="form-group">
+                <label class="form-label">Master Password</label>
+                <div class="input-with-action">
+                  <input type="password" id="unlock-pass" class="form-input" placeholder="Enter master password" required autofocus />
+                  <div class="input-action-buttons">
+                    <button type="button" class="btn-icon" id="toggle-unlock-eye">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div id="pass-strength-box" style="display:none;margin-top:0.35rem;"></div>
+              </div>
+              ${isSetup ? `
+              <div class="form-group">
+                <label class="form-label">Confirm Master Password</label>
+                <input type="password" id="unlock-pass-confirm" class="form-input" placeholder="Repeat master password" required />
+              </div>` : ''}
+              <button type="submit" class="btn btn-primary" style="padding:0.75rem;margin-top:0.5rem;" id="unlock-btn">
+                ${isSetup ? 'Create Secure Vault' : 'Unlock Vault'}
+              </button>
+            </form>
+            <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius-md);padding:0.85rem;font-size:0.8rem;color:var(--text-secondary);text-align:left;">
+              <strong style="color:var(--primary);display:block;margin-bottom:0.2rem;">🔒 100% Offline & Client-Side</strong>
+              Data is stored only on this browser in IndexedDB. No backend servers, zero network calls.
+            </div>
+          </div>
+        </div>`;
+
+      const form = document.getElementById('unlock-form');
+      const passInput = document.getElementById('unlock-pass');
+      const confirmInput = document.getElementById('unlock-pass-confirm');
+      const eyeBtn = document.getElementById('toggle-unlock-eye');
+      const errBox = document.getElementById('unlock-err');
+      const card = document.getElementById('lock-card');
+      const strengthBox = document.getElementById('pass-strength-box');
+
+      eyeBtn.onclick = () => {
+        passInput.type = passInput.type === 'password' ? 'text' : 'password';
+      };
+
+      if (isSetup) {
+        passInput.oninput = () => {
+          const s = evaluateStrength(passInput.value);
+          strengthBox.style.display = 'block';
+          strengthBox.innerHTML = `
+            <div class="strength-meter">
+              <div class="strength-bar ${s.score >= 1 ? (s.score === 1 ? 'weak' : s.score === 2 ? 'medium' : 'strong') : ''}"></div>
+              <div class="strength-bar ${s.score >= 2 ? (s.score === 2 ? 'medium' : 'strong') : ''}"></div>
+              <div class="strength-bar ${s.score >= 3 ? 'strong' : ''}"></div>
+              <div class="strength-bar ${s.score >= 4 ? 'strong' : ''}"></div>
+            </div>
+            <div style="font-size:0.75rem;color:${s.color};margin-top:2px;">Strength: ${s.label} (${s.bits} bits)</div>`;
+        };
+      }
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const pwd = passInput.value;
+        const triggerErr = (msg) => {
+          errBox.textContent = msg;
+          errBox.style.display = 'block';
+          card.classList.add('shake');
+          setTimeout(() => card.classList.remove('shake'), 400);
+        };
+
+        if (isSetup) {
+          if (pwd.length < 8) return triggerErr('Password must be at least 8 characters.');
+          if (pwd !== confirmInput.value) return triggerErr('Passwords do not match.');
+
+          const salt = generateSalt(16);
+          const key = await deriveMasterKey(pwd, salt);
+          const canary = await encryptPayload({ canary: CANARY_SECRET }, key);
+          const meta = { salt, canary, autoLockMinutes: 15, createdAt: new Date().toISOString() };
+          await saveStoredMeta(meta);
+          state.meta = meta;
+          state.masterKey = key;
+          state.items = [];
+          state.vaultStatus = 'unlocked';
+          showToast('Vault created successfully!');
+          render();
+        } else {
+          try {
+            const key = await deriveMasterKey(pwd, state.meta.salt);
+            const verified = await decryptPayload(state.meta.canary, key);
+            if (!verified || verified.canary !== CANARY_SECRET) throw new Error('Bad key');
+
+            // Decrypt items
+            const encryptedItems = await getStoredItems();
+            const decrypted = [];
+            for (const item of encryptedItems) {
+              try {
+                const payload = await decryptPayload({ ciphertext: item.ciphertext, iv: item.iv }, key);
+                decrypted.push({ id: item.id, category: item.category || 'logins', favorite: !!item.favorite, updatedAt: item.updatedAt, ...payload });
+              } catch (e) { console.error(e); }
+            }
+            state.masterKey = key;
+            state.items = decrypted;
+            state.vaultStatus = 'unlocked';
+            showToast('Vault unlocked.');
+            render();
+          } catch (err) {
+            triggerErr('Incorrect master password. Please try again.');
+          }
+        }
+      };
+    }
+
+    function renderDashboard(container) {
+      // Calculate counts
+      const counts = { all: state.items.length, favorites: 0, logins: 0, cards: 0, notes: 0 };
+      let weakCount = 0;
+      const pwdMap = {};
+      state.items.forEach(i => {
+        if (i.favorite) counts.favorites++;
+        if (counts[i.category] !== undefined) counts[i.category]++;
+        if (i.category === 'logins' && i.password) {
+          if (i.password.length < 12) weakCount++;
+          pwdMap[i.password] = (pwdMap[i.password] || 0) + 1;
+        }
+      });
+      const reusedCount = Object.values(pwdMap).filter(c => c > 1).length;
+      const totalAlerts = weakCount + reusedCount;
+
+      // Filtered items
+      const filtered = state.items.filter(item => {
+        if (state.activeCategory === 'favorites' && !item.favorite) return false;
+        if (state.activeCategory !== 'all' && state.activeCategory !== 'favorites' && item.category !== state.activeCategory) return false;
+        if (state.searchQuery) {
+          const q = state.searchQuery.toLowerCase();
+          return (item.title || '').toLowerCase().includes(q) ||
+                 (item.username || '').toLowerCase().includes(q) ||
+                 (item.url || '').toLowerCase().includes(q) ||
+                 (item.notes || '').toLowerCase().includes(q);
+        }
+        return true;
+      });
+
+      container.innerHTML = `
+        <header class="navbar">
+          <div class="nav-brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Offline Vault</span>
+          </div>
+          <div class="nav-search">
+            <span class="search-icon-pos">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </span>
+            <input type="text" id="nav-search-input" placeholder="Search logins, cards, notes..." value="${escapeHtml(state.searchQuery)}" />
+          </div>
+          <div class="nav-actions">
+            <button class="btn btn-secondary" id="btn-open-gen">✨ Generator</button>
+            <button class="btn btn-secondary" id="btn-open-audit">
+              🛡️ Health ${totalAlerts > 0 ? `<span style="background:var(--danger);color:white;font-size:0.7rem;padding:1px 6px;border-radius:9999px;margin-left:4px;">${totalAlerts}</span>` : ''}
+            </button>
+            <button class="btn btn-primary" id="btn-new-item">＋ New Item</button>
+            <button class="btn-icon" id="btn-open-settings" title="Settings">⚙️</button>
+            <button class="btn btn-danger" id="btn-lock-vault">🔒 Lock</button>
+          </div>
+        </header>
+
+        <div class="main-layout">
+          <aside class="sidebar">
+            <div>
+              <div class="sidebar-heading">Categories</div>
+              <div class="sidebar-nav">
+                ${[
+                  { id: 'all', label: 'All Items', icon: '🔑', count: counts.all },
+                  { id: 'favorites', label: 'Favorites', icon: '⭐', count: counts.favorites },
+                  { id: 'logins', label: 'Logins', icon: '🌐', count: counts.logins },
+                  { id: 'cards', label: 'Cards', icon: '💳', count: counts.cards },
+                  { id: 'notes', label: 'Secure Notes', icon: '📝', count: counts.notes }
+                ].map(cat => `
+                  <button class="sidebar-item ${state.activeCategory === cat.id ? 'active' : ''}" data-cat="${cat.id}">
+                    <div style="display:flex;align-items:center;gap:0.75rem;">
+                      <span>${cat.icon}</span><span>${cat.label}</span>
+                    </div>
+                    <span class="badge">${cat.count}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div style="margin-top:auto;border-top:1px solid var(--border-color);padding-top:1rem;">
+              <div style="background:var(--bg-input);padding:0.75rem;border-radius:var(--radius-md);font-size:0.78rem;color:var(--text-secondary);">
+                <div style="color:var(--primary);font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:var(--primary);display:inline-block;"></span>
+                  100% Offline
+                </div>
+                IndexedDB AES-256 encrypted. Zero network connection.
+              </div>
+            </div>
+          </aside>
+
+          <main class="content-area">
+            <div class="content-header">
+              <div>
+                <h2 class="content-title">${state.activeCategory.toUpperCase()}</h2>
+                <span style="color:var(--text-muted);font-size:0.85rem;">${filtered.length} items found</span>
+              </div>
+              <button class="btn btn-primary" id="btn-new-item-2">＋ Add Item</button>
+            </div>
+
+            ${filtered.length === 0 ? `
+              <div style="padding:4rem 2rem;text-align:center;border:1px dashed var(--border-color);border-radius:var(--radius-lg);color:var(--text-muted);">
+                <p style="font-size:1.1rem;color:var(--text-primary);margin-bottom:0.5rem;">No items found</p>
+                <p style="font-size:0.9rem;margin-bottom:1rem;">Add your first encrypted credential to get started.</p>
+                <button class="btn btn-primary" id="btn-empty-add">＋ Add First Item</button>
+              </div>
+            ` : `
+              <div class="items-grid">
+                ${filtered.map(item => renderItemCard(item)).join('')}
+              </div>
+            `}
+          </main>
+        </div>
+
+        <div id="modal-container"></div>
+      `;
+
+      // Wire Dashboard Events
+      document.getElementById('nav-search-input').oninput = (e) => {
+        state.searchQuery = e.target.value;
+        renderDashboard(container);
+      };
+
+      document.querySelectorAll('.sidebar-item[data-cat]').forEach(btn => {
+        btn.onclick = () => {
+          state.activeCategory = btn.getAttribute('data-cat');
+          renderDashboard(container);
+        };
+      });
+
+      const openAdd = () => openItemModal(null);
+      document.getElementById('btn-new-item').onclick = openAdd;
+      document.getElementById('btn-new-item-2').onclick = openAdd;
+      if (document.getElementById('btn-empty-add')) document.getElementById('btn-empty-add').onclick = openAdd;
+
+      document.getElementById('btn-lock-vault').onclick = lockVault;
+      document.getElementById('btn-open-gen').onclick = openGeneratorModal;
+      document.getElementById('btn-open-settings').onclick = openSettingsModal;
+      document.getElementById('btn-open-audit').onclick = openAuditModal;
+
+      // Item Card Buttons (Copy, Star, Reveal, Edit, Delete)
+      document.querySelectorAll('[data-action]').forEach(btn => {
+        const action = btn.getAttribute('data-action');
+        const id = btn.getAttribute('data-id');
+        const item = state.items.find(i => i.id === id);
+
+        if (action === 'toggle-star') {
+          btn.onclick = async () => {
+            item.favorite = !item.favorite;
+            await saveStoredItem({ ...item, ...await encryptPayload(getCleanSecret(item), state.masterKey) });
+            renderDashboard(container);
+          };
+        } else if (action === 'reveal-pass') {
+          btn.onclick = () => {
+            state.revealedPasswords[id] = !state.revealedPasswords[id];
+            renderDashboard(container);
+          };
+        } else if (action === 'copy') {
+          btn.onclick = () => {
+            const val = btn.getAttribute('data-val');
+            navigator.clipboard.writeText(val);
+            showToast('Copied to clipboard!');
+          };
+        } else if (action === 'edit') {
+          btn.onclick = () => openItemModal(item);
+        } else if (action === 'delete') {
+          btn.onclick = async () => {
+            if (confirm(`Delete "${item.title}"?`)) {
+              await deleteStoredItem(item.id);
+              state.items = state.items.filter(i => i.id !== id);
+              renderDashboard(container);
+              showToast('Item deleted.');
+            }
+          };
+        }
+      });
+    }
+
+    function renderItemCard(item) {
+      const isRevealed = !!state.revealedPasswords[item.id];
+      const icon = item.category === 'cards' ? '💳' : item.category === 'notes' ? '📝' : '🌐';
+
+      return `
+        <div class="item-card">
+          <div class="item-card-header">
+            <div class="item-title-wrap">
+              <div class="item-category-icon">${icon}</div>
+              <div>
+                <h3 class="item-title">${escapeHtml(item.title || 'Untitled')}</h3>
+                ${item.url ? `<a href="${escapeHtml(item.url.startsWith('http') ? item.url : 'https://' + item.url)}" target="_blank" rel="noreferrer" style="color:var(--text-muted);font-size:0.78rem;text-decoration:none;">${escapeHtml(item.url.replace(/^https?:\/\//, '').replace(/\/.*$/, ''))} ↗</a>` : ''}
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <button class="btn-icon" data-action="toggle-star" data-id="${item.id}" style="color:${item.favorite ? 'var(--warning)' : 'var(--text-muted)'};">
+                ${item.favorite ? '★' : '☆'}
+              </button>
+              <button class="btn-icon" data-action="edit" data-id="${item.id}" title="Edit">✏️</button>
+              <button class="btn-icon" data-action="delete" data-id="${item.id}" title="Delete" style="color:var(--danger)">🗑️</button>
+            </div>
+          </div>
+
+          <div class="item-fields">
+            ${item.category === 'logins' ? `
+              ${item.username ? `
+                <div class="field-row">
+                  <span class="field-label">User</span>
+                  <span class="field-value">${escapeHtml(item.username)}</span>
+                  <button class="btn-icon" style="padding:2px;" data-action="copy" data-val="${escapeHtml(item.username)}">📋</button>
+                </div>
+              ` : ''}
+              ${item.password ? `
+                <div class="field-row">
+                  <span class="field-label">Pass</span>
+                  <span class="field-value" style="letter-spacing:${isRevealed ? 'normal' : '2px'}">${escapeHtml(isRevealed ? item.password : '••••••••••••')}</span>
+                  <button class="btn-icon" style="padding:2px;" data-action="reveal-pass" data-id="${item.id}">${isRevealed ? '🙈' : '👁️'}</button>
+                  <button class="btn-icon" style="padding:2px;" data-action="copy" data-val="${escapeHtml(item.password)}">📋</button>
+                </div>
+              ` : ''}
+            ` : item.category === 'cards' ? `
+              <div class="field-row">
+                <span class="field-label">Card</span>
+                <span class="field-value">${isRevealed ? escapeHtml(item.cardNumber || '') : '•••• •••• •••• ' + (item.cardNumber || '').slice(-4)}</span>
+                <button class="btn-icon" style="padding:2px;" data-action="reveal-pass" data-id="${item.id}">${isRevealed ? '🙈' : '👁️'}</button>
+                <button class="btn-icon" style="padding:2px;" data-action="copy" data-val="${escapeHtml(item.cardNumber || '')}">📋</button>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Exp / CVV</span>
+                <span class="field-value">${escapeHtml(item.expiry || '--/--')} | ${isRevealed ? escapeHtml(item.cvv || '---') : '•••'}</span>
+              </div>
+            ` : `
+              <div style="font-size:0.85rem;white-space:pre-wrap;max-height:100px;overflow-y:auto;color:var(--text-primary);">
+                ${escapeHtml(item.notes || 'Empty note')}
+              </div>
+            `}
+          </div>
+
+          <div class="item-card-footer">
+            <span>${item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : 'Today'}</span>
+            <span style="text-transform:capitalize;">${item.category}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function getCleanSecret(item) {
+      const { id, category, favorite, updatedAt, createdAt, ...rest } = item;
+      return rest;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // --- MODALS ---
+    function openItemModal(editingItem) {
+      const modalCont = document.getElementById('modal-container');
+      const isEdit = !!editingItem;
+      const cat = editingItem ? editingItem.category : 'logins';
+
+      modalCont.innerHTML = `
+        <div class="modal-overlay" id="item-modal-overlay">
+          <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <span>${isEdit ? 'Edit Item' : 'New Vault Item'}</span>
+              <button class="btn-icon" id="item-modal-close">✕</button>
+            </div>
+            <form id="item-modal-form">
+              <div class="modal-body">
+                ${!isEdit ? `
+                  <div style="display:flex;gap:0.5rem;background:var(--bg-input);padding:0.25rem;border-radius:var(--radius-md);">
+                    <button type="button" class="btn ${cat === 'logins' ? 'btn-primary' : 'btn-secondary'}" style="flex:1" id="tab-logins">🌐 Login</button>
+                    <button type="button" class="btn ${cat === 'cards' ? 'btn-primary' : 'btn-secondary'}" style="flex:1" id="tab-cards">💳 Card</button>
+                    <button type="button" class="btn ${cat === 'notes' ? 'btn-primary' : 'btn-secondary'}" style="flex:1" id="tab-notes">📝 Note</button>
+                  </div>
+                ` : ''}
+
+                <div class="form-group">
+                  <label class="form-label">Title *</label>
+                  <input type="text" id="m-title" class="form-input" placeholder="e.g. GitHub, Google, Wi-Fi" value="${escapeHtml(editingItem?.title || '')}" required />
+                </div>
+
+                <div id="dynamic-fields"></div>
+
+                <div class="form-group">
+                  <label class="form-label">Private Notes (Encrypted)</label>
+                  <textarea id="m-notes" class="form-textarea" rows="3" placeholder="Optional notes...">${escapeHtml(editingItem?.notes || '')}</textarea>
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="item-modal-cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">${isEdit ? 'Save Changes' : 'Encrypt & Save'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+
+      let currentCat = cat;
+      const dynContainer = document.getElementById('dynamic-fields');
+
+      function updateCategoryFields(c) {
+        currentCat = c;
+        if (c === 'logins') {
+          dynContainer.innerHTML = `
+            <div class="form-group">
+              <label class="form-label">Username / Email</label>
+              <input type="text" id="m-user" class="form-input" placeholder="user@example.com" value="${escapeHtml(editingItem?.username || '')}" />
+            </div>
+            <div class="form-group">
+              <div style="display:flex;justify-content:space-between;">
+                <label class="form-label">Password</label>
+                <button type="button" id="m-quick-gen" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:0.8rem;">✨ Generate</button>
+              </div>
+              <div class="input-with-action">
+                <input type="password" id="m-pass" class="form-input" placeholder="Password" value="${escapeHtml(editingItem?.password || '')}" />
+                <div class="input-action-buttons">
+                  <button type="button" class="btn-icon" id="m-eye">👁️</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Website URL</label>
+              <input type="text" id="m-url" class="form-input" placeholder="https://..." value="${escapeHtml(editingItem?.url || '')}" />
+            </div>
+          `;
+          document.getElementById('m-eye').onclick = () => {
+            const p = document.getElementById('m-pass');
+            p.type = p.type === 'password' ? 'text' : 'password';
+          };
+          document.getElementById('m-quick-gen').onclick = () => {
+            const p = document.getElementById('m-pass');
+            p.value = generateSecurePassword({ length: 20 });
+            p.type = 'text';
+            showToast('Generated strong password!');
+          };
+        } else if (c === 'cards') {
+          dynContainer.innerHTML = `
+            <div class="form-group">
+              <label class="form-label">Cardholder Name</label>
+              <input type="text" id="m-cardholder" class="form-input" value="${escapeHtml(editingItem?.cardholder || '')}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Card Number</label>
+              <input type="text" id="m-cardnum" class="form-input" placeholder="4000 1234 5678 9010" value="${escapeHtml(editingItem?.cardNumber || '')}" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div class="form-group">
+                <label class="form-label">Expires (MM/YY)</label>
+                <input type="text" id="m-exp" class="form-input" placeholder="12/28" value="${escapeHtml(editingItem?.expiry || '')}" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">CVV</label>
+                <input type="password" id="m-cvv" class="form-input" placeholder="123" value="${escapeHtml(editingItem?.cvv || '')}" />
+              </div>
+            </div>
+          `;
+        } else {
+          dynContainer.innerHTML = '';
+        }
+      }
+
+      updateCategoryFields(cat);
+
+      if (!isEdit) {
+        ['logins', 'cards', 'notes'].forEach(t => {
+          document.getElementById(`tab-${t}`).onclick = () => {
+            ['logins', 'cards', 'notes'].forEach(x => {
+              document.getElementById(`tab-${x}`).className = x === t ? 'btn btn-primary' : 'btn btn-secondary';
+            });
+            updateCategoryFields(t);
+          };
+        });
+      }
+
+      const close = () => { modalCont.innerHTML = ''; };
+      document.getElementById('item-modal-close').onclick = close;
+      document.getElementById('item-modal-cancel').onclick = close;
+      document.getElementById('item-modal-overlay').onclick = close;
+
+      document.getElementById('item-modal-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('m-title').value.trim();
+        const notes = document.getElementById('m-notes').value.trim();
+        const secret = { title, notes };
+
+        if (currentCat === 'logins') {
+          secret.username = document.getElementById('m-user').value.trim();
+          secret.password = document.getElementById('m-pass').value;
+          secret.url = document.getElementById('m-url').value.trim();
+        } else if (currentCat === 'cards') {
+          secret.cardholder = document.getElementById('m-cardholder').value.trim();
+          secret.cardNumber = document.getElementById('m-cardnum').value.trim();
+          secret.expiry = document.getElementById('m-exp').value.trim();
+          secret.cvv = document.getElementById('m-cvv').value.trim();
+        }
+
+        const encrypted = await encryptPayload(secret, state.masterKey);
+        const id = editingItem ? editingItem.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const record = {
+          id,
+          category: currentCat,
+          favorite: editingItem ? editingItem.favorite : false,
+          ciphertext: encrypted.ciphertext,
+          iv: encrypted.iv,
+          createdAt: editingItem?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        await saveStoredItem(record);
+        if (editingItem) {
+          state.items = state.items.map(i => i.id === id ? { ...record, ...secret } : i);
+        } else {
+          state.items.unshift({ ...record, ...secret });
+        }
+
+        close();
+        renderDashboard(document.getElementById('app'));
+        showToast(isEdit ? 'Item updated!' : 'Item encrypted & saved!');
+      };
+    }
+
+    function openGeneratorModal() {
+      const modalCont = document.getElementById('modal-container');
+      modalCont.innerHTML = `
+        <div class="modal-overlay" id="gen-modal-overlay">
+          <div class="modal-card" onclick="event.stopPropagation()" style="max-width:480px;">
+            <div class="modal-header">
+              <span>✨ Password Generator</span>
+              <button class="btn-icon" id="gen-modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+              <div style="background:var(--bg-input);padding:1rem;border-radius:var(--radius-md);display:flex;justify-content:space-between;align-items:center;">
+                <span id="gen-display" style="font-family:monospace;font-size:1.2rem;letter-spacing:1px;word-break:break-all;"></span>
+                <div style="display:flex;gap:4px;">
+                  <button class="btn-icon" id="btn-regen">🔄</button>
+                  <button class="btn-icon" id="btn-copy-gen" style="color:var(--primary);">📋</button>
+                </div>
+              </div>
+              <div id="gen-strength-box"></div>
+              <div class="form-group">
+                <div style="display:flex;justify-content:space-between;">
+                  <label class="form-label">Length</label>
+                  <span id="gen-len-lbl" style="color:var(--primary);font-weight:700;">20</span>
+                </div>
+                <input type="range" id="gen-len" min="8" max="64" value="20" style="accent-color:var(--primary);width:100%;cursor:pointer;" />
+              </div>
+              <div style="display:flex;flex-direction:column;gap:0.5rem;font-size:0.9rem;">
+                <label><input type="checkbox" id="g-upper" checked /> Uppercase (A-Z)</label>
+                <label><input type="checkbox" id="g-lower" checked /> Lowercase (a-z)</label>
+                <label><input type="checkbox" id="g-nums" checked /> Numbers (0-9)</label>
+                <label><input type="checkbox" id="g-syms" checked /> Symbols (!@#$%)</label>
+                <label><input type="checkbox" id="g-amb" /> Avoid Ambiguous (1, l, 0, O)</label>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" id="gen-done">Done</button>
+              <button class="btn btn-primary" id="btn-copy-gen-2">📋 Copy Password</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const display = document.getElementById('gen-display');
+      const lenSlider = document.getElementById('gen-len');
+      const lenLbl = document.getElementById('gen-len-lbl');
+      const sBox = document.getElementById('gen-strength-box');
+
+      const doGen = () => {
+        const pwd = generateSecurePassword({
+          length: parseInt(lenSlider.value, 10),
+          useUpper: document.getElementById('g-upper').checked,
+          useLower: document.getElementById('g-lower').checked,
+          useNumbers: document.getElementById('g-nums').checked,
+          useSymbols: document.getElementById('g-syms').checked,
+          avoidAmbiguous: document.getElementById('g-amb').checked
+        });
+        display.textContent = pwd;
+        lenLbl.textContent = lenSlider.value;
+        const s = evaluateStrength(pwd);
+        sBox.innerHTML = `
+          <div class="strength-meter">
+            <div class="strength-bar strong"></div>
+            <div class="strength-bar strong"></div>
+            <div class="strength-bar strong"></div>
+            <div class="strength-bar ${s.score >= 4 ? 'strong' : ''}"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-top:2px;">
+            <span style="color:${s.color}">${s.label}</span>
+            <span style="color:var(--text-muted)">~${s.bits} bits entropy</span>
+          </div>`;
+      };
+
+      lenSlider.oninput = doGen;
+      ['g-upper', 'g-lower', 'g-nums', 'g-syms', 'g-amb'].forEach(id => {
+        document.getElementById(id).onchange = doGen;
+      });
+      document.getElementById('btn-regen').onclick = doGen;
+
+      const copyAction = () => {
+        navigator.clipboard.writeText(display.textContent);
+        showToast('Password copied to clipboard!');
+      };
+      document.getElementById('btn-copy-gen').onclick = copyAction;
+      document.getElementById('btn-copy-gen-2').onclick = copyAction;
+
+      const close = () => { modalCont.innerHTML = ''; };
+      document.getElementById('gen-modal-close').onclick = close;
+      document.getElementById('gen-done').onclick = close;
+      document.getElementById('gen-modal-overlay').onclick = close;
+
+      doGen();
+    }
+
+    function openAuditModal() {
+      const modalCont = document.getElementById('modal-container');
+      const weak = [];
+      const pwdMap = {};
+      state.items.forEach(i => {
+        if (i.category === 'logins' && i.password) {
+          if (i.password.length < 12) weak.push(i);
+          if (!pwdMap[i.password]) pwdMap[i.password] = [];
+          pwdMap[i.password].push(i);
+        }
+      });
+      const reused = Object.values(pwdMap).filter(g => g.length > 1);
+
+      modalCont.innerHTML = `
+        <div class="modal-overlay" id="audit-modal-overlay">
+          <div class="modal-card" onclick="event.stopPropagation()" style="max-width:580px;">
+            <div class="modal-header">
+              <span>🛡️ Security Health Check</span>
+              <button class="btn-icon" id="audit-close">✕</button>
+            </div>
+            <div class="modal-body">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+                <div style="background:var(--bg-input);padding:1rem;border-radius:var(--radius-md);text-align:center;">
+                  <div style="font-size:1.5rem;font-weight:700;color:${weak.length > 0 ? 'var(--danger)' : 'var(--primary)'}">${weak.length}</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted)">Weak Passwords</div>
+                </div>
+                <div style="background:var(--bg-input);padding:1rem;border-radius:var(--radius-md);text-align:center;">
+                  <div style="font-size:1.5rem;font-weight:700;color:${reused.length > 0 ? 'var(--warning)' : 'var(--primary)'}">${reused.length}</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted)">Reused Groups</div>
+                </div>
+              </div>
+
+              ${weak.length === 0 && reused.length === 0 ? `
+                <div style="background:rgba(16,185,129,0.1);border:1px solid var(--primary);padding:1rem;border-radius:var(--radius-md);color:var(--primary);text-align:center;">
+                  ✓ Excellent! All passwords are strong and unique.
+                </div>
+              ` : `
+                ${weak.length > 0 ? `
+                  <div>
+                    <h4 style="color:var(--danger);font-size:0.9rem;margin-bottom:0.5rem;">⚠️ Weak Passwords (&lt; 12 chars)</h4>
+                    <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                      ${weak.map(w => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-input);padding:0.65rem 0.85rem;border-radius:var(--radius-md);">
+                          <span><strong>${escapeHtml(w.title)}</strong> (${w.password.length} chars)</span>
+                          <button class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.8rem;" data-audit-edit="${w.id}">Change</button>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+
+                ${reused.length > 0 ? `
+                  <div style="margin-top:1rem;">
+                    <h4 style="color:var(--warning);font-size:0.9rem;margin-bottom:0.5rem;">⚠️ Reused Across Accounts</h4>
+                    ${reused.map(g => `
+                      <div style="background:var(--bg-input);border:1px solid rgba(245,158,11,0.3);padding:0.75rem;border-radius:var(--radius-md);margin-bottom:0.5rem;">
+                        <div style="font-size:0.8rem;color:var(--warning);margin-bottom:0.35rem;">Used by ${g.length} services:</div>
+                        ${g.map(i => `<div style="font-size:0.85rem;padding:2px 0;">• ${escapeHtml(i.title)}</div>`).join('')}
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+              `}
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" id="audit-done">Close</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const close = () => { modalCont.innerHTML = ''; };
+      document.getElementById('audit-close').onclick = close;
+      document.getElementById('audit-done').onclick = close;
+      document.getElementById('audit-modal-overlay').onclick = close;
+
+      document.querySelectorAll('[data-audit-edit]').forEach(b => {
+        b.onclick = () => {
+          const item = state.items.find(i => i.id === b.getAttribute('data-audit-edit'));
+          close();
+          openItemModal(item);
+        };
+      });
+    }
+
+    function openSettingsModal() {
+      const modalCont = document.getElementById('modal-container');
+      modalCont.innerHTML = `
+        <div class="modal-overlay" id="settings-overlay">
+          <div class="modal-card" onclick="event.stopPropagation()" style="max-width:540px;">
+            <div class="modal-header">
+              <span>⚙️ Settings & Backup</span>
+              <button class="btn-icon" id="set-close">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">Auto-Lock Inactivity Timer</label>
+                <select id="set-autolock" class="form-select">
+                  <option value="5" ${state.autoLockMinutes === 5 ? 'selected' : ''}>5 minutes</option>
+                  <option value="15" ${state.autoLockMinutes === 15 ? 'selected' : ''}>15 minutes (default)</option>
+                  <option value="30" ${state.autoLockMinutes === 30 ? 'selected' : ''}>30 minutes</option>
+                  <option value="0" ${state.autoLockMinutes === 0 ? 'selected' : ''}>Never</option>
+                </select>
+              </div>
+
+              <hr style="border-color:var(--border-color);" />
+
+              <div>
+                <h4 style="font-size:0.95rem;font-weight:600;margin-bottom:0.35rem;">Backup & Export</h4>
+                <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;">
+                  Export encrypted JSON backup. Safe to store anywhere because it stays AES-GCM encrypted.
+                </p>
+                <button class="btn btn-secondary" id="btn-export-backup">⬇️ Export Encrypted Vault (.json)</button>
+              </div>
+
+              <hr style="border-color:var(--border-color);" />
+
+              <div style="border:1px solid var(--danger);background:var(--danger-light);padding:1rem;border-radius:var(--radius-md);">
+                <h4 style="color:var(--danger);font-size:0.95rem;font-weight:700;margin-bottom:0.35rem;">Danger Zone: Wipe Vault</h4>
+                <p style="font-size:0.8rem;color:var(--text-primary);margin-bottom:0.75rem;">
+                  Permanently delete all stored passwords and reset this browser's IndexedDB.
+                </p>
+                <button class="btn btn-danger" id="btn-wipe-vault">🗑️ Wipe Everything</button>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" id="set-done">Close</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('set-autolock').onchange = async (e) => {
+        state.autoLockMinutes = parseInt(e.target.value, 10);
+        state.meta.autoLockMinutes = state.autoLockMinutes;
+        await saveStoredMeta(state.meta);
+        showToast('Auto-lock timer updated.');
+      };
+
+      document.getElementById('btn-export-backup').onclick = async () => {
+        const encrypted = await getStoredItems();
+        const backup = {
+          app: 'OfflinePasswordManager',
+          salt: state.meta.salt,
+          canary: state.meta.canary,
+          items: encrypted,
+          exportedAt: new Date().toISOString()
+        };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `vault-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        showToast('Backup file downloaded!');
+      };
+
+      document.getElementById('btn-wipe-vault').onclick = async () => {
+        if (confirm('DANGER: Permanently wipe all data? This cannot be undone!')) {
+          await clearAllStoredData();
+          state.masterKey = null;
+          state.items = [];
+          state.meta = null;
+          state.vaultStatus = 'uninitialized';
+          modalCont.innerHTML = '';
+          render();
+          showToast('Vault wiped and reset.');
+        }
+      };
+
+      const close = () => { modalCont.innerHTML = ''; };
+      document.getElementById('set-close').onclick = close;
+      document.getElementById('set-done').onclick = close;
+      document.getElementById('settings-overlay').onclick = close;
+    }
+
+    // Launch app
+    initVault();
+  </script>
+</body>
+</html>
