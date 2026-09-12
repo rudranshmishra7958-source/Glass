@@ -1,4 +1,10 @@
-importScripts("rule-index.js", "tracker-list.js", "threat-list.js");
+importScripts(
+  "rule-index.js",
+  "tracker-list.js",
+  "threat-list.js",
+  "surrogate-list.js",
+  "embed-domains.js"
+);
 
 const tabCache = new Map();
 const tabQueues = new Map();
@@ -32,6 +38,22 @@ function emptyCounts() {
 
 function emptyLists() {
   return { advertising: [], analytics: [], social: [], other: [] };
+}
+
+function isHttpTabUrl(url) {
+  return Boolean(url && /^https?:/i.test(url));
+}
+
+function pageUrlKey(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return "";
+    }
+    return parsed.origin + parsed.pathname + parsed.search;
+  } catch {
+    return String(url || "").split("#")[0];
+  }
 }
 
 function hostnameFromUrl(url) {
@@ -134,6 +156,7 @@ function serializeTabState(state) {
     blockedHosts: listsFromSets(state.blockedHosts),
     insecureForms: state.insecureForms || [],
     lastActivityAt: state.lastActivityAt || Date.now(),
+    navStartedAt: state.navStartedAt || state.lastActivityAt || Date.now(),
     dirty: Boolean(state.dirty)
   };
 }
@@ -147,6 +170,7 @@ function deserializeTabState(raw) {
     blockedHosts: setsFromLists(raw.blockedHosts),
     insecureForms: raw.insecureForms || [],
     lastActivityAt: raw.lastActivityAt || Date.now(),
+    navStartedAt: raw.navStartedAt || raw.lastActivityAt || Date.now(),
     dirty: Boolean(raw.dirty)
   };
 }
@@ -160,6 +184,7 @@ function freshState(pageDomain, pageUrl) {
     blockedHosts: emptyTrackers(),
     insecureForms: [],
     lastActivityAt: Date.now(),
+    navStartedAt: Date.now(),
     dirty: false
   };
 }
@@ -218,7 +243,10 @@ async function ensureTab(tabId, pageUrl) {
   const pageDomain = pageUrl ? hostnameFromUrl(pageUrl) : null;
   const existing = await getTabState(tabId);
   if (existing) {
-    if (pageDomain && existing.pageDomain && existing.pageDomain !== pageDomain) {
+    const urlChanged =
+      pageUrl && existing.pageUrl && pageUrlKey(pageUrl) !== pageUrlKey(existing.pageUrl);
+    const hostChanged = pageDomain && existing.pageDomain && existing.pageDomain !== pageDomain;
+    if (urlChanged || hostChanged) {
       await flushHistoryForTab(tabId);
       return resetTab(tabId, pageUrl);
     }
@@ -251,6 +279,20 @@ function allCategoryPrefs(enabled) {
     other: enabled
   };
 }
+
+const EXCEPTION_RULE_ID_BASE = 800001;
+const EXCEPTION_RESOURCE_TYPES = [
+  "script",
+  "xmlhttprequest",
+  "image",
+  "sub_frame",
+  "ping",
+  "media",
+  "font",
+  "stylesheet",
+  "websocket",
+  "other"
+];
 
 function normalizeSitePrefs(value) {
   if (value === true) {
@@ -309,7 +351,8 @@ async function getSettings() {
   const defaults = allCategoryPrefs(true);
   const saved = stored.settings?.defaultCategoryBlocking;
   return {
-    defaultCategoryBlocking: saved ? normalizeSitePrefs(saved) : defaults
+    defaultCategoryBlocking: saved ? normalizeSitePrefs(saved) : defaults,
+    cosmeticFiltering: stored.settings?.cosmeticFiltering !== false
   };
 }
 
@@ -318,7 +361,11 @@ async function setSettings(next) {
   const merged = {
     defaultCategoryBlocking: next.defaultCategoryBlocking
       ? normalizeSitePrefs(next.defaultCategoryBlocking)
-      : current.defaultCategoryBlocking
+      : current.defaultCategoryBlocking,
+    cosmeticFiltering:
+      typeof next.cosmeticFiltering === "boolean"
+        ? next.cosmeticFiltering
+        : current.cosmeticFiltering
   };
   await chrome.storage.local.set({ settings: merged });
   return merged;
@@ -543,7 +590,11 @@ async function disableAllProtection() {
   });
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const removeRuleIds = existing
-    .filter((rule) => rule.id >= THREAT_RULE_ID_BASE && rule.id < THREAT_RULE_ID_MAX)
+    .filter(
+      (rule) =>
+        (rule.id >= THREAT_RULE_ID_BASE && rule.id < THREAT_RULE_ID_MAX) ||
+        (rule.id >= SURROGATE_RULE_ID_BASE && rule.id < SURROGATE_RULE_ID_MAX)
+    )
     .map((rule) => rule.id);
   if (removeRuleIds.length) {
     await chrome.declarativeNetRequest.updateDynamicRules({
@@ -551,6 +602,7 @@ async function disableAllProtection() {
       addRules: []
     });
   }
+  await syncTrackerExceptionRules(null);
   try {
     await chrome.action.setBadgeText({ text: "OFF" });
     await chrome.action.setBadgeBackgroundColor({ color: "#8a5a12" });
@@ -591,10 +643,6 @@ function parseTypedHost(value) {
   }
 }
 
-function isHttpTabUrl(url) {
-  return Boolean(url && /^https?:/i.test(url));
-}
-
 async function collectLiveTabs() {
   const tabs = await chrome.tabs.query({});
   const results = [];
@@ -603,7 +651,7 @@ async function collectLiveTabs() {
       continue;
     }
     const host = hostnameFromUrl(tab.url);
-    const data = await snapshot(tab.id);
+    const data = await enqueueTab(tab.id, () => snapshot(tab.id));
     results.push({
       tabId: tab.id,
       title: tab.title || host || "",
@@ -649,6 +697,123 @@ async function deleteHistoryEntry(day, host) {
   }
   await chrome.storage.local.set({ visitHistory: history });
   return history;
+}
+
+async function getTrackerExceptions() {
+  const stored = await chrome.storage.local.get("trackerExceptions");
+  return stored.trackerExceptions || [];
+}
+
+function exceptionKey(site, tracker) {
+  return `${normalizeHost(site)}::${normalizeHost(tracker)}`;
+}
+
+function isTrackerExcepted(exceptions, site, tracker) {
+  if (!site || !tracker) {
+    return false;
+  }
+  const page = normalizeHost(site);
+  const host = normalizeHost(tracker);
+  return exceptions.some((entry) => {
+    const entrySite = normalizeHost(entry.site);
+    const entryTracker = normalizeHost(entry.tracker);
+    const siteMatch =
+      page === entrySite || page.endsWith("." + entrySite) || entrySite.endsWith("." + page);
+    const trackerMatch =
+      host === entryTracker || host.endsWith("." + entryTracker) || entryTracker.endsWith("." + host);
+    return siteMatch && trackerMatch;
+  });
+}
+
+async function addTrackerException(site, tracker) {
+  const page = normalizeHost(site);
+  const host = normalizeHost(tracker);
+  if (!page || !host) {
+    return getTrackerExceptions();
+  }
+  const list = await getTrackerExceptions();
+  if (isTrackerExcepted(list, page, host)) {
+    return list;
+  }
+  list.push({ site: page, tracker: host });
+  await chrome.storage.local.set({ trackerExceptions: list });
+  return list;
+}
+
+async function removeTrackerException(site, tracker) {
+  const page = normalizeHost(site);
+  const host = normalizeHost(tracker);
+  const list = (await getTrackerExceptions()).filter(
+    (entry) => exceptionKey(entry.site, entry.tracker) !== exceptionKey(page, host)
+  );
+  await chrome.storage.local.set({ trackerExceptions: list });
+  return list;
+}
+
+async function syncTrackerExceptionRules(host) {
+  const existing = await chrome.declarativeNetRequest.getSessionRules();
+  const removeRuleIds = existing
+    .filter((rule) => rule.id >= EXCEPTION_RULE_ID_BASE)
+    .map((rule) => rule.id);
+  if (await isPaused() || (await isWhitelisted(host))) {
+    if (removeRuleIds.length) {
+      await chrome.declarativeNetRequest.updateSessionRules({
+        removeRuleIds,
+        addRules: []
+      });
+    }
+    return;
+  }
+  const exceptions = await getTrackerExceptions();
+  const addRules = exceptions.slice(0, 200).map((entry, index) => ({
+    id: EXCEPTION_RULE_ID_BASE + index,
+    priority: 4,
+    action: { type: "allow" },
+    condition: {
+      requestDomains: [entry.tracker],
+      initiatorDomains: [entry.site],
+      resourceTypes: EXCEPTION_RESOURCE_TYPES
+    }
+  }));
+  await chrome.declarativeNetRequest.updateSessionRules({
+    removeRuleIds,
+    addRules
+  });
+}
+
+async function installSurrogateRules(prefs) {
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const removeRuleIds = existing
+    .filter((rule) => rule.id >= SURROGATE_RULE_ID_BASE && rule.id < SURROGATE_RULE_ID_MAX)
+    .map((rule) => rule.id);
+  const blockingOn = prefs && isBlockingEnabled(prefs) && !(await isPaused());
+  const addRules = [];
+  if (blockingOn) {
+    for (const item of SURROGATES) {
+      if (item.category && prefs[item.category] === false) {
+        continue;
+      }
+      addRules.push({
+        id: SURROGATE_RULE_ID_BASE + item.id,
+        priority: 3,
+        action: {
+          type: "redirect",
+          redirect: { extensionPath: item.path }
+        },
+        condition: {
+          urlFilter: item.urlFilter,
+          requestDomains: item.requestDomains,
+          resourceTypes: ["script"]
+        }
+      });
+    }
+  }
+  if (removeRuleIds.length || addRules.length) {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds,
+      addRules
+    });
+  }
 }
 
 async function getSitePrefs(host) {
@@ -727,6 +892,8 @@ async function applyBlockingForHost(host) {
     await chrome.declarativeNetRequest.updateEnabledRulesets({
       disableRulesetIds: trackerRulesets
     });
+    await installSurrogateRules(allCategoryPrefs(false));
+    await syncTrackerExceptionRules(host);
     return allCategoryPrefs(false);
   }
 
@@ -745,6 +912,8 @@ async function applyBlockingForHost(host) {
     enableRulesetIds,
     disableRulesetIds
   });
+  await installSurrogateRules(prefs);
+  await syncTrackerExceptionRules(host);
   return prefs;
 }
 
@@ -773,9 +942,14 @@ function addBlockedHost(state, host) {
 
 async function getMatchedDomains(tabId, state) {
   const blocked = emptyTrackers();
+  const tab = state || (await getTabState(tabId));
+  const started = tab?.navStartedAt || 0;
   try {
     const result = await chrome.declarativeNetRequest.getMatchedRules({ tabId });
     for (const info of result.rulesMatchedInfo || []) {
+      if (started && info.timeStamp && info.timeStamp < started) {
+        continue;
+      }
       const meta = RULE_INDEX.byId[info.rule.ruleId];
       if (!meta) {
         continue;
@@ -785,7 +959,6 @@ async function getMatchedDomains(tabId, state) {
   } catch (error) {
     console.warn("[Glass] getMatchedRules", error);
   }
-  const tab = state || (await getTabState(tabId));
   if (tab) {
     for (const category of CATEGORY_ORDER) {
       for (const domain of tab.blockedHosts[category]) {
@@ -944,6 +1117,19 @@ chrome.webRequest.onErrorOccurred.addListener(
       if (isFirstParty(state.pageDomain, requestHost)) {
         return;
       }
+      const exceptions = await getTrackerExceptions();
+      if (isTrackerExcepted(exceptions, state.pageDomain, requestHost)) {
+        return;
+      }
+      if (details.type === "sub_frame" && isEmbedHost(requestHost)) {
+        chrome.tabs
+          .sendMessage(details.tabId, {
+            type: "EMBED_BLOCKED",
+            url: details.url,
+            host: requestHost
+          })
+          .catch(() => {});
+      }
       if (addBlockedHost(state, requestHost)) {
         state.dirty = true;
         await putTabState(details.tabId, state);
@@ -1021,25 +1207,42 @@ chrome.webRequest.onBeforeRequest.addListener(
   { urls: ["<all_urls>"] }
 );
 
+chrome.webNavigation.onCommitted.addListener((details) => {
+  if (details.frameId !== 0 || details.tabId < 0) {
+    return;
+  }
+  if (details.error || !isHttpTabUrl(details.url)) {
+    return;
+  }
+  enqueueTab(details.tabId, async () => {
+    await flushHistoryForTab(details.tabId);
+    await resetTab(details.tabId, details.url);
+    await applyBlockingForHost(hostnameFromUrl(details.url));
+    await refreshTabUi(details.tabId, details.url);
+  });
+});
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url) {
     enqueueTab(tabId, async () => {
       const current = await getTabState(tabId);
-      const nextHost = hostnameFromUrl(changeInfo.url);
-      if (current?.pageDomain && nextHost && nextHost !== current.pageDomain) {
+      const nextKey = pageUrlKey(changeInfo.url);
+      const prevKey = pageUrlKey(current?.pageUrl || "");
+      if (nextKey && prevKey && nextKey !== prevKey) {
         await flushHistoryForTab(tabId);
         await resetTab(tabId, changeInfo.url);
       } else {
         await ensureTab(tabId, changeInfo.url);
       }
-      await applyBlockingForHost(nextHost);
+      await applyBlockingForHost(hostnameFromUrl(changeInfo.url));
       await refreshTabUi(tabId, changeInfo.url);
     });
   } else if (changeInfo.status === "loading" && tab.url) {
     enqueueTab(tabId, async () => {
-      const nextHost = hostnameFromUrl(tab.url);
+      const nextKey = pageUrlKey(tab.url);
       const current = await getTabState(tabId);
-      if (nextHost && current && current.pageDomain && nextHost !== current.pageDomain) {
+      const prevKey = pageUrlKey(current?.pageUrl || "");
+      if (nextKey && prevKey && nextKey !== prevKey) {
         await flushHistoryForTab(tabId);
         await resetTab(tabId, tab.url);
       } else {
@@ -1094,18 +1297,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       let host = null;
       let favIconUrl = "";
       let tabUrl = "";
+      let data = {};
       try {
         const tab = await chrome.tabs.get(tabId);
         tabUrl = tab.url || "";
         host = hostnameFromUrl(tabUrl);
         favIconUrl = tab.favIconUrl || "";
-        await enqueueTab(tabId, () => ensureTab(tabId, tabUrl));
+        data = await enqueueTab(tabId, async () => {
+          await ensureTab(tabId, tabUrl);
+          return refreshTabUi(tabId, tabUrl);
+        });
       } catch {
         host = (await getTabState(tabId))?.pageDomain || null;
+        data = (await refreshTabUi(tabId, tabUrl)) || {};
       }
       const whitelisted = await isWhitelisted(host);
       const prefs = await getSitePrefs(host);
-      const data = await refreshTabUi(tabId, tabUrl);
       if (!data.domain) {
         data.domain = host;
       }
@@ -1117,6 +1324,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       data.blockingEnabled = !whitelisted && !pause.paused && isBlockingEnabled(prefs);
       data.categoryBlocking = prefs;
       data.lifetimeBlocked = await getLifetimeBlocked();
+      data.trackerExceptions = (await getTrackerExceptions()).filter((entry) =>
+        isTrackerExcepted([entry], host, entry.tracker)
+      );
       sendResponse(data);
     })();
     return true;
@@ -1194,6 +1404,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "BLOCK_AND_RELOAD") {
+    (async () => {
+      const tabId = Number(message.tabId);
+      if (!Number.isFinite(tabId)) {
+        sendResponse({ ok: false, reason: "Missing tab." });
+        return;
+      }
+      if (await isPaused()) {
+        sendResponse({ ok: false, reason: "Protection is paused." });
+        return;
+      }
+      let tab;
+      try {
+        tab = await chrome.tabs.get(tabId);
+      } catch {
+        sendResponse({ ok: false, reason: "Tab is gone." });
+        return;
+      }
+      const host = hostnameFromUrl(tab.url || "");
+      if (!host) {
+        sendResponse({ ok: false, reason: "Open a website first." });
+        return;
+      }
+      if (await isWhitelisted(host)) {
+        sendResponse({ ok: false, reason: "This site is trusted." });
+        return;
+      }
+      const settings = await getSettings();
+      await setSitePrefs(host, settings.defaultCategoryBlocking);
+      await applyBlockingForHost(host);
+      await chrome.tabs.reload(tabId);
+      sendResponse({ ok: true, tabId, host });
+    })();
+    return true;
+  }
+
   if (message?.type === "GET_LIVE_TABS") {
     (async () => {
       sendResponse({ tabs: await collectLiveTabs() });
@@ -1208,7 +1454,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         "lifetimeThreatsBlocked",
         "visitHistory",
         "threatLog",
-        "whitelist"
+        "whitelist",
+        "trackerExceptions"
       ]);
       const settings = await getSettings();
       const visitHistory = stored.visitHistory || {};
@@ -1219,6 +1466,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         visitHistory,
         threatLog: stored.threatLog || [],
         whitelist: stored.whitelist || [],
+        trackerExceptions: stored.trackerExceptions || [],
         settings,
         protectionScore: protectionScore(visitHistory),
         paused: pause.paused,
@@ -1287,6 +1535,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "GET_PAUSE") {
     (async () => {
       sendResponse({ ok: true, ...(await getPauseState()) });
+    })();
+    return true;
+  }
+
+  if (message?.type === "ADD_TRACKER_EXCEPTION") {
+    (async () => {
+      const site = normalizeHost(message.site);
+      const tracker = normalizeHost(message.tracker);
+      const list = await addTrackerException(site, tracker);
+      await syncTrackerExceptionRules(site);
+      sendResponse({ ok: true, trackerExceptions: list });
+    })();
+    return true;
+  }
+
+  if (message?.type === "REMOVE_TRACKER_EXCEPTION") {
+    (async () => {
+      const site = normalizeHost(message.site);
+      const tracker = normalizeHost(message.tracker);
+      const list = await removeTrackerException(site, tracker);
+      await syncTrackerExceptionRules(site);
+      sendResponse({ ok: true, trackerExceptions: list });
     })();
     return true;
   }

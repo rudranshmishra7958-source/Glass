@@ -271,8 +271,16 @@ code {
   border-top: 0;
 }
 
+.live-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .live-head {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -283,6 +291,30 @@ code {
   cursor: pointer;
   font: inherit;
   color: inherit;
+}
+
+.live-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 10px;
+  flex-shrink: 0;
+}
+
+.live-action {
+  border: 1px solid rgba(91, 124, 153, 0.28);
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.live-action:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .live-favicon {

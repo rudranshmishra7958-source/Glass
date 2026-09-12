@@ -82,6 +82,14 @@
           <div id="default-toggles"></div>
         </div>
         <div class="glass-panel">
+          <h2>Page cleanup</h2>
+          <label class="setting-row">
+            <span>Hide leftover ad spaces</span>
+            <input type="checkbox" id="cosmetic-toggle" />
+          </label>
+          <p class="hint">Hides empty ad boxes after trackers are blocked. Local CSS only.</p>
+        </div>
+        <div class="glass-panel">
           <h2>Trusted sites</h2>
           <p class="hint">Same list as the popup’s “Trust this site” toggle.</p>
           <form id="trust-form" class="trust-form">
@@ -90,6 +98,11 @@
           </form>
           <p class="hint" id="trust-error" hidden></p>
           <div id="whitelist-list"></div>
+        </div>
+        <div class="glass-panel">
+          <h2>Allowed trackers</h2>
+          <p class="hint">Single-tracker exceptions for a specific site.</p>
+          <div id="exception-list"></div>
         </div>
         <div class="glass-panel">
           <h2>Export</h2>

@@ -36,6 +36,9 @@ const pauseBannerEl = document.getElementById("pause-banner");
 const pauseHintEl = document.getElementById("pause-hint");
 const pauseControlsEl = document.getElementById("pause-controls");
 const resumeBtn = document.getElementById("resume-protection");
+const blockNowBtn = document.getElementById("block-now");
+let currentTabId = null;
+let reloadWatcher = null;
 
 let currentHost = null;
 
@@ -86,25 +89,59 @@ function renderList(data, isHttp) {
     return;
   }
 
+  const exceptions = data.trackerExceptions || [];
+  const canAllow = Boolean(data.blockingEnabled) && !data.whitelisted && !data.paused;
   const groups = CATEGORIES.map((category) => {
     const active = data.trackers?.[category.id] || [];
     const blocked = data.blockedTrackers?.[category.id] || [];
     if (!active.length && !blocked.length) {
       return "";
     }
-    const blockedRows = blocked
-      .map(
-        (domain) =>
-          `<div class="tracker-item is-blocked"><span>${escapeHtml(domain)}</span><span class="chip">blocked</span></div>`
-      )
-      .join("");
-    const activeRows = active
-      .map((domain) => `<div class="tracker-item">${escapeHtml(domain)}</div>`)
-      .join("");
+    const row = (domain, extraClass) => {
+      const excepted = isTrackerExceptedLocal(exceptions, currentHost, domain);
+      const action = excepted
+        ? `<button type="button" class="allow-btn is-on" data-tracker="${escapeHtml(domain)}" data-remove="1">allowed here</button>`
+        : canAllow
+          ? `<button type="button" class="allow-btn" data-tracker="${escapeHtml(domain)}">Allow here</button>`
+          : "";
+      const chip = extraClass.includes("is-blocked") && !excepted
+        ? `<span class="chip">blocked</span>`
+        : "";
+      return `<div class="tracker-item ${excepted ? "is-allowed" : extraClass}"><span>${escapeHtml(domain)}</span><span class="tracker-actions">${chip}${action}</span></div>`;
+    };
+    const blockedRows = blocked.map((domain) => row(domain, "is-blocked")).join("");
+    const activeRows = active.map((domain) => row(domain, "")).join("");
     return `<p class="group-label">${category.label}</p>${blockedRows}${activeRows}`;
   }).join("");
 
   listEl.innerHTML = groups || `<p class="empty">No known trackers on this page yet.</p>`;
+  listEl.querySelectorAll(".allow-btn").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      if (!currentHost) {
+        return;
+      }
+      await chrome.runtime.sendMessage({
+        type: button.dataset.remove ? "REMOVE_TRACKER_EXCEPTION" : "ADD_TRACKER_EXCEPTION",
+        site: currentHost,
+        tracker: button.dataset.tracker
+      });
+      await load();
+    });
+  });
+}
+
+function isTrackerExceptedLocal(exceptions, site, tracker) {
+  const page = String(site || "");
+  const host = String(tracker || "");
+  return (exceptions || []).some((entry) => {
+    const entrySite = entry.site || "";
+    const entryTracker = entry.tracker || "";
+    const siteMatch = page === entrySite || page.endsWith("." + entrySite) || entrySite.endsWith("." + page);
+    const trackerMatch =
+      host === entryTracker || host.endsWith("." + entryTracker) || entryTracker.endsWith("." + host);
+    return siteMatch && trackerMatch;
+  });
 }
 
 function renderCategoryToggles(data) {
@@ -211,7 +248,23 @@ function renderPause(data) {
     toggleEl.disabled = true;
     trustToggleEl.disabled = true;
     categoryTogglesEl.hidden = true;
+    blockNowBtn.disabled = true;
   }
+}
+
+function watchReloadComplete(tabId, onDone) {
+  if (reloadWatcher) {
+    chrome.tabs.onUpdated.removeListener(reloadWatcher);
+    reloadWatcher = null;
+  }
+  reloadWatcher = (id, info) => {
+    if (id === tabId && info.status === "complete") {
+      chrome.tabs.onUpdated.removeListener(reloadWatcher);
+      reloadWatcher = null;
+      onDone();
+    }
+  };
+  chrome.tabs.onUpdated.addListener(reloadWatcher);
 }
 
 function render(data, hostFallback, isHttp) {
@@ -247,6 +300,7 @@ function render(data, hostFallback, isHttp) {
   const canToggle = Boolean(host) && isHttp && !data.whitelisted && !data.paused;
   toggleEl.disabled = !canToggle;
   toggleEl.checked = Boolean(data.blockingEnabled);
+  blockNowBtn.disabled = !canToggle;
   document.body.classList.remove("is-loading");
   document.body.classList.add("is-ready");
 }
@@ -255,10 +309,12 @@ async function load() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const pause = await chrome.runtime.sendMessage({ type: "GET_PAUSE" });
   if (!tab) {
+    currentTabId = null;
     statusEl.textContent = "No active tab";
     render({ total: 0, counts: {}, trackers: {}, ...(pause || {}) }, null, false);
     return;
   }
+  currentTabId = tab.id;
 
   const isHttp = Boolean(tab.url && /^https?:/i.test(tab.url));
   if (!isHttp) {
@@ -283,6 +339,7 @@ async function load() {
       false
     );
     toggleEl.disabled = true;
+    blockNowBtn.disabled = true;
     return;
   }
 
@@ -344,6 +401,26 @@ pauseControlsEl.querySelectorAll("[data-pause]").forEach((button) => {
 
 resumeBtn.addEventListener("click", async () => {
   await setPause(null);
+});
+
+blockNowBtn.addEventListener("click", async () => {
+  if (!currentTabId) {
+    return;
+  }
+  blockNowBtn.disabled = true;
+  const result = await chrome.runtime.sendMessage({
+    type: "BLOCK_AND_RELOAD",
+    tabId: currentTabId
+  });
+  if (!result?.ok) {
+    statusEl.textContent = result?.reason || "Could not reload this tab";
+    blockNowBtn.disabled = false;
+    return;
+  }
+  statusEl.textContent = "Reloading to block loaded trackers…";
+  watchReloadComplete(currentTabId, () => {
+    load().catch((error) => console.error(error));
+  });
 });
 
 load().catch((error) => {

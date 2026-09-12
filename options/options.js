@@ -8,6 +8,7 @@ const CATEGORIES = [
 let expandedTabId = null;
 let liveTimer = null;
 let dashboardCache = {};
+const pendingReloads = new Set();
 
 function escapeHtml(value) {
   return String(value)
@@ -142,13 +143,19 @@ function renderLive(payload) {
         : `<span class="live-favicon"></span>`;
       return `
         <article class="live-row${open ? " is-open" : ""}" data-tab-id="${tab.tabId}">
-          <button type="button" class="live-head" data-tab-id="${tab.tabId}">
-            ${favicon}
-            <span class="live-meta">
-              <strong>${escapeHtml(tab.domain || "unknown")}</strong>
-              <span class="hint">${tab.detectedCount} detected · ${tab.blockedCount} blocked · ${tab.activeCount} active</span>
-            </span>
-          </button>
+          <div class="live-top">
+            <button type="button" class="live-head" data-tab-id="${tab.tabId}">
+              ${favicon}
+              <span class="live-meta">
+                <strong>${escapeHtml(tab.domain || "unknown")}</strong>
+                <span class="hint">${tab.detectedCount} detected · ${tab.blockedCount} blocked · ${tab.activeCount} active</span>
+              </span>
+            </button>
+            <div class="live-actions">
+              <button type="button" class="live-action" data-refresh="${tab.tabId}">Refresh</button>
+              <button type="button" class="live-action" data-block="${tab.tabId}">Block active now</button>
+            </div>
+          </div>
           ${open ? `<div class="live-detail">${trackerGroupsHtml(tab)}</div>` : ""}
         </article>
       `;
@@ -160,6 +167,30 @@ function renderLive(payload) {
       const id = Number(button.dataset.tabId);
       expandedTabId = expandedTabId === id ? null : id;
       renderLive(payload);
+    });
+  });
+
+  listEl.querySelectorAll("[data-refresh]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      refreshLive().catch((error) => console.error(error));
+    });
+  });
+
+  listEl.querySelectorAll("[data-block]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const tabId = Number(button.dataset.block);
+      button.disabled = true;
+      const result = await chrome.runtime.sendMessage({
+        type: "BLOCK_AND_RELOAD",
+        tabId
+      });
+      if (!result?.ok) {
+        button.disabled = false;
+        return;
+      }
+      pendingReloads.add(tabId);
     });
   });
 }
@@ -268,6 +299,42 @@ function renderSettings(data) {
   });
 
   renderWhitelist(data.whitelist);
+  renderExceptions(data.trackerExceptions);
+
+  const cosmetic = document.getElementById("cosmetic-toggle");
+  cosmetic.checked = data.settings?.cosmeticFiltering !== false;
+  cosmetic.onchange = async () => {
+    await chrome.runtime.sendMessage({
+      type: "UPDATE_SETTINGS",
+      settings: { cosmeticFiltering: cosmetic.checked }
+    });
+  };
+}
+
+function renderExceptions(list) {
+  const el = document.getElementById("exception-list");
+  const exceptions = list || [];
+  if (!exceptions.length) {
+    el.innerHTML = `<p class="hint">No per-tracker allows yet. Use “Allow here” in the popup.</p>`;
+    return;
+  }
+  el.innerHTML = exceptions
+    .map(
+      (item) =>
+        `<div class="whitelist-row"><span class="mono">${escapeHtml(item.tracker)} on ${escapeHtml(item.site)}</span><button type="button" class="remove" data-site="${escapeHtml(item.site)}" data-tracker="${escapeHtml(item.tracker)}">×</button></div>`
+    )
+    .join("");
+  el.querySelectorAll("button[data-tracker]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const result = await chrome.runtime.sendMessage({
+        type: "REMOVE_TRACKER_EXCEPTION",
+        site: button.dataset.site,
+        tracker: button.dataset.tracker
+      });
+      dashboardCache.trackerExceptions = result.trackerExceptions || [];
+      renderExceptions(dashboardCache.trackerExceptions);
+    });
+  });
 }
 
 async function refreshLive() {
@@ -363,4 +430,11 @@ document.getElementById("export-data").addEventListener("click", async () => {
 
 load().catch((error) => {
   console.error(error);
+});
+
+chrome.tabs.onUpdated.addListener((tabId, info) => {
+  if (info.status === "complete" && pendingReloads.has(tabId)) {
+    pendingReloads.delete(tabId);
+    refreshLive().catch((error) => console.error(error));
+  }
 });

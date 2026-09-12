@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Glass",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "See what a website is doing behind your back — trackers, phishing, and risky downloads, all local.",
   "permissions": [
     "tabs",
@@ -12,7 +12,8 @@
     "declarativeNetRequestFeedback",
     "downloads",
     "notifications",
-    "alarms"
+    "alarms",
+    "webNavigation"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -35,15 +36,19 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["content.js"],
+      "js": ["cosmetic-selectors.js", "cosmetic.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["embed-domains.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["warning.html"],
-      "matches": ["<all_urls>"],
-      "use_dynamic_url": true
+      "resources": ["warning.html", "surrogates/ga.js", "surrogates/fbq.js"],
+      "matches": ["<all_urls>"]
     }
   ],
   "options_ui": {

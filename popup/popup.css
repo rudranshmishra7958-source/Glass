@@ -263,6 +263,29 @@ body.is-loading .skeleton-target {
   text-decoration: none;
 }
 
+.tracker-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.allow-btn {
+  flex-shrink: 0;
+  font: 10px/1.2 "Segoe UI", system-ui, sans-serif;
+  border: 1px solid rgba(91, 124, 153, 0.35);
+  background: var(--glass-strong);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 2px 7px;
+  cursor: pointer;
+}
+
+.allow-btn.is-on {
+  color: var(--green);
+  border-color: #c7dfd0;
+}
+
 .empty {
   color: var(--muted);
   font-size: 12px;
@@ -465,4 +488,19 @@ body.is-loading .skeleton-target {
   font-size: 12px;
   cursor: pointer;
   color: var(--ink);
+}
+
+.block-now {
+  margin-top: 8px;
+}
+
+.block-now:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.block-now-hint {
+  margin: 4px 0 8px;
+  color: var(--muted);
+  font-size: 11px;
 }
