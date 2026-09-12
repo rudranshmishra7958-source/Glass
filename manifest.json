@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Glass",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "See what a website is doing behind your back — locally, in your browser.",
   "permissions": [
     "tabs",
     "webRequest",
     "storage",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -30,9 +31,24 @@
   "declarative_net_request": {
     "rule_resources": [
       {
-        "id": "ruleset_1",
+        "id": "ruleset_advertising",
         "enabled": false,
-        "path": "rules.json"
+        "path": "rules/advertising.json"
+      },
+      {
+        "id": "ruleset_analytics",
+        "enabled": false,
+        "path": "rules/analytics.json"
+      },
+      {
+        "id": "ruleset_social",
+        "enabled": false,
+        "path": "rules/social.json"
+      },
+      {
+        "id": "ruleset_other",
+        "enabled": false,
+        "path": "rules/other.json"
       }
     ]
   }

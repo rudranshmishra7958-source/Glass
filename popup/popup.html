@@ -6,25 +6,31 @@
     <title>Glass</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
-  <body>
+  <body class="is-loading">
     <header class="header">
       <div>
         <p class="brand">Glass</p>
-        <p class="status" id="status">Glass is running</p>
+        <p class="status" id="status">Reading this page…</p>
       </div>
-      <p class="domain" id="domain">…</p>
+      <div class="domain-row">
+        <img id="favicon" class="favicon" alt="" hidden />
+        <p class="domain" id="domain">…</p>
+      </div>
     </header>
 
-    <section class="badge" id="badge" data-severity="green">
-      <p class="badge-count" id="badge-count">0</p>
+    <section class="badge skeleton-target" id="badge" data-severity="green">
+      <p class="badge-count" id="badge-count">—</p>
       <p class="badge-label" id="badge-label">trackers</p>
+      <p class="badge-split" id="badge-split" hidden></p>
     </section>
 
-    <section class="categories" id="categories"></section>
+    <section class="categories skeleton-target" id="categories"></section>
 
-    <section class="list-wrap">
+    <section class="list-wrap skeleton-target">
       <h2 class="list-title">Trackers on this page</h2>
-      <div class="tracker-list" id="tracker-list"></div>
+      <div class="tracker-list" id="tracker-list">
+        <p class="empty">Reading this page…</p>
+      </div>
     </section>
 
     <label class="toggle">
@@ -36,7 +42,12 @@
       <span class="switch" aria-hidden="true"></span>
     </label>
 
-    <footer class="footer">Everything above stays on your device.</footer>
+    <section class="category-toggles" id="category-toggles" hidden></section>
+
+    <footer class="footer">
+      <p id="lifetime" class="lifetime" hidden></p>
+      <p>Everything above stays on your device.</p>
+    </footer>
     <script src="popup.js"></script>
   </body>
 </html>

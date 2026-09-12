@@ -1,3 +1,19 @@
+const CATEGORY_ORDER = ["advertising", "analytics", "social", "other"];
+
+const RULESET_ID_BY_CATEGORY = {
+  advertising: "ruleset_advertising",
+  analytics: "ruleset_analytics",
+  social: "ruleset_social",
+  other: "ruleset_other"
+};
+
+const RULE_ID_BASE = {
+  advertising: 1,
+  analytics: 1001,
+  social: 2001,
+  other: 3001
+};
+
 const TRACKER_LIST = {
   advertising: [
     "doubleclick.net",
@@ -106,7 +122,86 @@ const TRACKER_LIST = {
     "sonobi.com",
     "stickyadstv.com",
     "undertone.com",
-    "googletagmanager.com"
+    "googletagmanager.com",
+    "id5-sync.com",
+    "id5.io",
+    "crwdcntrl.net",
+    "lotame.com",
+    "tapad.com",
+    "doubleverify.com",
+    "dvtag.com",
+    "integralads.com",
+    "adlightning.com",
+    "3lift.com",
+    "emxdgt.com",
+    "unrulymedia.com",
+    "freewheel.tv",
+    "fwmrm.net",
+    "yieldlab.net",
+    "360yield.com",
+    "smaato.net",
+    "flashtalking.com",
+    "spotx.tv",
+    "springserve.com",
+    "w55c.net",
+    "semasio.net",
+    "tribalfusion.com",
+    "exponential.com",
+    "mediamath.com",
+    "stackadapt.com",
+    "rtbhouse.com",
+    "adyoulike.com",
+    "vidazoo.com",
+    "aniview.com",
+    "mediavine.com",
+    "playwire.com",
+    "4dex.io",
+    "im-apps.net",
+    "adgrx.com",
+    "adotmob.com",
+    "adotube.com",
+    "bidtheatre.com",
+    "smartclip.net",
+    "loopme.me",
+    "loopme.com",
+    "startapp.com",
+    "supersonicads.com",
+    "inner-active.mobi",
+    "nexage.com",
+    "mobfox.com",
+    "aerserv.com",
+    "tapjoy.com",
+    "chartboosted.com",
+    "pubnative.net",
+    "smaato.com",
+    "ogury.com",
+    "presage.io",
+    "adtrue.com",
+    "ad-delivery.net",
+    "adthrive.com",
+    "ezoic.com",
+    "ezoic.net",
+    "snigelweb.com",
+    "fuseplatform.net",
+    "concert.io",
+    "primis.tech",
+    "ex.co",
+    "ntv.io",
+    "postrelease.com",
+    "lijit.com",
+    "sovrn.com",
+    "cpx.to",
+    "adsymptotic.com",
+    "contextweb.com",
+    "rubiconproject.com",
+    "openx.net",
+    "1rx.io",
+    "deepintent.com",
+    "iqzone.com",
+    "minutemedia.com",
+    "mmctsvc.com",
+    "s-onetag.com",
+    "onetag-sys.com"
   ],
   analytics: [
     "google-analytics.com",
@@ -171,7 +266,72 @@ const TRACKER_LIST = {
     "hscollectedforms.net",
     "pardot.com",
     "eloqua.com",
-    "en25.com"
+    "en25.com",
+    "imrworldwide.com",
+    "comscore.com",
+    "contentsquare.net",
+    "cxense.com",
+    "piano.io",
+    "tinypass.com",
+    "ophan.co.uk",
+    "permutive.com",
+    "permutive.app",
+    "googleoptimize.com",
+    "bat.bing.com",
+    "analytics.yahoo.com",
+    "sp.analytics.yahoo.com",
+    "udc.yahoo.com",
+    "flurry.com",
+    "usefathom.com",
+    "umami.is",
+    "pirsch.io",
+    "customer.io",
+    "hsadspixel.net",
+    "hs-banner.com",
+    "hubspot.net",
+    "collect.igodigital.com",
+    "js-agent.newrelic.com",
+    "js.monitor.azure.com",
+    "quantummetric.com",
+    "glassbox.com",
+    "decibelinsight.net",
+    "sessioncam.com",
+    "smartlook.com",
+    "woopra.com",
+    "parse.ly",
+    "config.parsely.com",
+    "static.chartbeat.com",
+    "ping.chartbeat.net",
+    "sb.scorecardresearch.com",
+    "b.scorecardresearch.com",
+    "secure.quantserve.com",
+    "pixel.quantserve.com",
+    "cdn.mxpnl.com",
+    "api.mixpanel.com",
+    "cdn.segment.com",
+    "api.segment.io",
+    "cdn.amplitude.com",
+    "api2.amplitude.com",
+    "rs.fullstory.com",
+    "edge.fullstory.com",
+    "script.hotjar.com",
+    "static.hotjar.com",
+    "insights.hotjar.com",
+    "cdn.heapanalytics.com",
+    "cdn.mouseflow.com",
+    "cdn.luckyorange.com",
+    "w.usabilla.com",
+    "static.ads-twitter.com",
+    "analytics.twitter.com",
+    "stats.wp.com",
+    "pixel.wp.com",
+    "beacon.gu-web.net",
+    "mparticle.com",
+    "iterable.com",
+    "braze.com",
+    "braze.eu",
+    "cdn.branch.io",
+    "api.segment.io"
   ],
   social: [
     "facebook.net",
@@ -191,7 +351,23 @@ const TRACKER_LIST = {
     "addthis.com",
     "addtoany.com",
     "disqus.com",
-    "disquscdn.com"
+    "disquscdn.com",
+    "snap.licdn.com",
+    "px.ads.linkedin.com",
+    "ct.pinterest.com",
+    "log.pinterest.com",
+    "analytics.pinterest.com",
+    "ads.tiktok.com",
+    "analytics-sg.tiktok.com",
+    "app-analytics-services.com",
+    "pixel-config.reddit.com",
+    "events.reddit.com",
+    "events.redditmedia.com",
+    "connect.facebook.com",
+    "graph.facebook.com",
+    "staticxx.facebook.com",
+    "platform.linkedin.com",
+    "snapchat.com"
   ],
   other: [
     "cloudflareinsights.com",
@@ -227,12 +403,89 @@ const TRACKER_LIST = {
     "adjust.com",
     "kochava.com",
     "singular.net",
-    "mparticle.com",
     "tealiumiq.com",
     "tiqcdn.com",
     "ensighten.com",
     "evidon.com",
     "intercom.io",
-    "intercomcdn.com"
+    "intercomcdn.com",
+    "datadome.co",
+    "threatmetrix.com",
+    "iovation.com",
+    "cdn.siftscience.com",
+    "api.siftscience.com",
+    "walkme.com",
+    "appcues.com",
+    "userpilot.com",
+    "whatfix.com",
+    "gainsight.com",
+    "drift.com",
+    "livechatinc.com",
+    "geetest.com",
+    "kasada.io",
+    "incapsula.com",
+    "imperva.com",
+    "akstat.io",
+    "consent.cookiebot.com",
+    "geolocation.onetrust.com",
+    "privacyportal.onetrust.com",
+    "cdn-ukwest.onetrust.com",
+    "fast.wistia.com",
+    "snapengage.com",
+    "qualtrics.com",
+    "siteintercept.qualtrics.com",
+    "znaptag.com",
+    "trustpilot.com",
+    "widget.trustpilot.com",
+    "cdn.trustpilot.com",
+    "iubenda.com",
+    "fundingchoicesmessages.google.com",
+    "fc.yahoo.com",
+    "guce.advertising.com",
+    "cmp.osano.com",
+    "consentmanager.net",
+    "quantcast.mgr.consensu.org",
+    "vendorlist.consensu.org"
   ]
 };
+
+function normalizeTrackerHost(host) {
+  return String(host || "")
+    .toLowerCase()
+    .replace(/\.$/, "")
+    .replace(/^www\./, "");
+}
+
+function uniqueNormalized(list) {
+  const seen = new Set();
+  const out = [];
+  for (const raw of list) {
+    const domain = normalizeTrackerHost(raw);
+    if (!domain || seen.has(domain)) {
+      continue;
+    }
+    seen.add(domain);
+    out.push(domain);
+  }
+  return out;
+}
+
+function buildRuleIndex() {
+  const byId = {};
+  const usedDomains = new Set();
+  const entries = [];
+  for (const category of CATEGORY_ORDER) {
+    let id = RULE_ID_BASE[category];
+    for (const domain of uniqueNormalized(TRACKER_LIST[category])) {
+      if (usedDomains.has(domain)) {
+        continue;
+      }
+      usedDomains.add(domain);
+      byId[id] = { domain, category };
+      entries.push({ domain, category });
+      id += 1;
+    }
+  }
+  entries.sort((a, b) => b.domain.length - a.domain.length);
+  return { byId, entries };
+}
