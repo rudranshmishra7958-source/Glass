@@ -1,6 +1,8 @@
 importScripts("rule-index.js", "tracker-list.js", "threat-list.js");
 
-const tabState = new Map();
+const tabCache = new Map();
+const tabQueues = new Map();
+const flushTimers = new Map();
 const SEVERITY_COLORS = {
   green: "#2f6f4e",
   amber: "#8a5a12",
@@ -9,6 +11,11 @@ const SEVERITY_COLORS = {
 
 const RISKY_DOWNLOAD =
   /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|jpg|jpeg|png|gif|zip|rar|mp3|mp4|avi)\.(exe|js|bat|scr|com|vbs|msi|cmd|ps1|jar|dll|apk)$/i;
+
+const PAUSE_ALARM = "glass-unpause";
+const HISTORY_FLUSH_PREFIX = "history-flush-";
+const HISTORY_FLUSH_MS = 5000;
+const THREAT_HOST_SET = new Set(THREAT_DOMAINS);
 
 function emptyTrackers() {
   return {
@@ -90,35 +97,140 @@ function isFirstParty(pageHost, requestHost) {
   return rootDomain(pageHost) === rootDomain(requestHost);
 }
 
-function freshState(pageDomain) {
+function tabStorageKey(tabId) {
+  return `glassTab:${tabId}`;
+}
+
+function historyAlarmName(tabId) {
+  return HISTORY_FLUSH_PREFIX + tabId;
+}
+
+function listsFromSets(sets) {
   return {
-    pageDomain,
-    requests: new Set(),
-    trackers: emptyTrackers(),
-    blockedHosts: emptyTrackers(),
-    lifetimeCredited: new Set(),
-    insecureForms: []
+    advertising: Array.from(sets?.advertising || []),
+    analytics: Array.from(sets?.analytics || []),
+    social: Array.from(sets?.social || []),
+    other: Array.from(sets?.other || [])
   };
 }
 
-function ensureTab(tabId, pageUrl) {
-  const pageDomain = pageUrl ? hostnameFromUrl(pageUrl) : null;
-  const existing = tabState.get(tabId);
-  if (existing) {
-    if (pageDomain && existing.pageDomain !== pageDomain) {
-      tabState.set(tabId, freshState(pageDomain));
-      return tabState.get(tabId);
-    }
-    return existing;
+function setsFromLists(lists) {
+  const next = emptyTrackers();
+  if (!lists) {
+    return next;
   }
-  const state = freshState(pageDomain);
-  tabState.set(tabId, state);
+  for (const category of CATEGORY_ORDER) {
+    next[category] = new Set(lists[category] || []);
+  }
+  return next;
+}
+
+function serializeTabState(state) {
+  return {
+    pageDomain: state.pageDomain || null,
+    pageUrl: state.pageUrl || "",
+    requests: Array.from(state.requests || []),
+    trackers: listsFromSets(state.trackers),
+    blockedHosts: listsFromSets(state.blockedHosts),
+    insecureForms: state.insecureForms || [],
+    lastActivityAt: state.lastActivityAt || Date.now(),
+    dirty: Boolean(state.dirty)
+  };
+}
+
+function deserializeTabState(raw) {
+  return {
+    pageDomain: raw.pageDomain || null,
+    pageUrl: raw.pageUrl || "",
+    requests: new Set(raw.requests || []),
+    trackers: setsFromLists(raw.trackers),
+    blockedHosts: setsFromLists(raw.blockedHosts),
+    insecureForms: raw.insecureForms || [],
+    lastActivityAt: raw.lastActivityAt || Date.now(),
+    dirty: Boolean(raw.dirty)
+  };
+}
+
+function freshState(pageDomain, pageUrl) {
+  return {
+    pageDomain: pageDomain || null,
+    pageUrl: pageUrl || "",
+    requests: new Set(),
+    trackers: emptyTrackers(),
+    blockedHosts: emptyTrackers(),
+    insecureForms: [],
+    lastActivityAt: Date.now(),
+    dirty: false
+  };
+}
+
+function enqueueTab(tabId, task) {
+  const previous = tabQueues.get(tabId) || Promise.resolve();
+  const next = previous.then(task, task);
+  tabQueues.set(
+    tabId,
+    next.catch((error) => {
+      console.warn("[Glass] tab queue", error);
+    })
+  );
+  return next;
+}
+
+async function getTabState(tabId) {
+  if (tabCache.has(tabId)) {
+    return tabCache.get(tabId);
+  }
+  const key = tabStorageKey(tabId);
+  const stored = await chrome.storage.session.get(key);
+  if (!stored[key]) {
+    return null;
+  }
+  const state = deserializeTabState(stored[key]);
+  tabCache.set(tabId, state);
   return state;
 }
 
-function resetTab(tabId, pageUrl) {
+async function putTabState(tabId, state) {
+  state.lastActivityAt = Date.now();
+  tabCache.set(tabId, state);
+  await chrome.storage.session.set({
+    [tabStorageKey(tabId)]: serializeTabState(state)
+  });
+}
+
+async function removeTabState(tabId) {
+  tabCache.delete(tabId);
+  if (flushTimers.has(tabId)) {
+    clearTimeout(flushTimers.get(tabId));
+    flushTimers.delete(tabId);
+  }
+  await chrome.storage.session.remove(tabStorageKey(tabId));
+  await chrome.alarms.clear(historyAlarmName(tabId));
+}
+
+async function resetTab(tabId, pageUrl) {
+  const state = freshState(hostnameFromUrl(pageUrl || ""), pageUrl || "");
+  await putTabState(tabId, state);
+  return state;
+}
+
+async function ensureTab(tabId, pageUrl) {
   const pageDomain = pageUrl ? hostnameFromUrl(pageUrl) : null;
-  tabState.set(tabId, freshState(pageDomain));
+  const existing = await getTabState(tabId);
+  if (existing) {
+    if (pageDomain && existing.pageDomain && existing.pageDomain !== pageDomain) {
+      await flushHistoryForTab(tabId);
+      return resetTab(tabId, pageUrl);
+    }
+    if (pageUrl && existing.pageUrl !== pageUrl) {
+      existing.pageUrl = pageUrl;
+    }
+    if (pageDomain && !existing.pageDomain) {
+      existing.pageDomain = pageDomain;
+    }
+    return existing;
+  }
+  return resetTab(tabId, pageUrl);
 }
 
 function categorizeDomain(host) {
@@ -243,36 +355,142 @@ async function logVisit(url, data) {
     return;
   }
   const day = dateKey();
-  const stored = await chrome.storage.local.get("visitHistory");
+  const stored = await chrome.storage.local.get(["visitHistory", "lifetimeBlocked"]);
   const history = stored.visitHistory || {};
   if (!history[day]) {
     history[day] = {};
   }
+  const prevBlocked = Number(history[day][host]?.blocked) || 0;
+  const nextBlocked = Number(data.blockedCount) || 0;
   history[day][host] = {
-    detected: data.detectedCount || 0,
-    blocked: data.blockedCount || 0,
-    active: data.activeCount || 0,
+    detected: Number(data.detectedCount) || 0,
+    blocked: nextBlocked,
+    active: Number(data.activeCount) || 0,
     ts: Date.now()
   };
-  await chrome.storage.local.set({ visitHistory: history });
+  const lifetimeBlocked = Math.max(0, (stored.lifetimeBlocked || 0) - prevBlocked + nextBlocked);
+  await chrome.storage.local.set({ visitHistory: history, lifetimeBlocked });
 }
 
-async function logThreat(domain) {
+async function flushHistoryForTab(tabId) {
+  const state = await getTabState(tabId);
+  if (!state?.dirty) {
+    return;
+  }
+  const data = await snapshot(tabId);
+  await logVisit(state.pageUrl || "", data);
+  const next = await getTabState(tabId);
+  if (next) {
+    next.dirty = false;
+    await putTabState(tabId, next);
+  }
+}
+
+async function scheduleHistoryFlush(tabId) {
+  const state = await getTabState(tabId);
+  if (!state?.dirty) {
+    return;
+  }
+  const name = historyAlarmName(tabId);
+  await chrome.alarms.clear(name);
+  await chrome.alarms.create(name, { when: Date.now() + HISTORY_FLUSH_MS });
+  if (flushTimers.has(tabId)) {
+    clearTimeout(flushTimers.get(tabId));
+  }
+  flushTimers.set(
+    tabId,
+    setTimeout(() => {
+      flushTimers.delete(tabId);
+      enqueueTab(tabId, () => flushHistoryForTab(tabId));
+    }, HISTORY_FLUSH_MS)
+  );
+}
+
+async function flushStaleSessionTabs() {
+  const all = await chrome.storage.session.get(null);
+  const now = Date.now();
+  for (const [key, raw] of Object.entries(all)) {
+    if (!key.startsWith("glassTab:")) {
+      continue;
+    }
+    const tabId = Number(key.slice("glassTab:".length));
+    if (!Number.isFinite(tabId) || !raw?.dirty) {
+      continue;
+    }
+    if (now - (raw.lastActivityAt || 0) >= HISTORY_FLUSH_MS) {
+      enqueueTab(tabId, () => flushHistoryForTab(tabId));
+    } else {
+      enqueueTab(tabId, () => scheduleHistoryFlush(tabId));
+    }
+  }
+}
+
+function isThreatHost(host) {
+  if (!host) {
+    return false;
+  }
+  if (THREAT_HOST_SET.has(host)) {
+    return true;
+  }
+  return THREAT_DOMAINS.some((domain) => host.endsWith("." + domain));
+}
+
+async function logThreat(domain, site) {
+  if (await isPaused()) {
+    return;
+  }
   const host = normalizeHost(domain);
   if (!host || host === "unknown site") {
     return;
   }
+  const encountered = normalizeHost(site) || host;
   const stored = await chrome.storage.local.get(["threatLog", "lifetimeThreatsBlocked"]);
   const threatLog = stored.threatLog || [];
   const last = threatLog[0];
   if (last && last.domain === host && Date.now() - last.ts < 15000) {
     return;
   }
-  threatLog.unshift({ domain: host, ts: Date.now() });
+  threatLog.unshift({ domain: host, site: encountered, ts: Date.now() });
   await chrome.storage.local.set({
     threatLog: threatLog.slice(0, 200),
     lifetimeThreatsBlocked: (stored.lifetimeThreatsBlocked || 0) + 1
   });
+  try {
+    await chrome.notifications.create(`glass-threat-${Date.now()}`, {
+      type: "basic",
+      iconUrl: "icons/icon128.png",
+      title: "Glass blocked a dangerous site",
+      message:
+        encountered && encountered !== host
+          ? `${host} was blocked on ${encountered}.`
+          : `${host} was blocked.`
+    });
+  } catch (error) {
+    console.warn("[Glass] threat notification", error);
+  }
+}
+
+function maybeLogThreatRequest(details) {
+  const warningBase = chrome.runtime.getURL("warning.html");
+  let threatHost = null;
+  const requestHost = hostnameFromUrl(details.url);
+  if (requestHost && isThreatHost(requestHost)) {
+    threatHost = requestHost;
+  } else if (details.url && details.url.startsWith(warningBase)) {
+    try {
+      threatHost = new URL(details.url).searchParams.get("domain");
+    } catch {
+      threatHost = null;
+    }
+  }
+  if (!threatHost) {
+    return;
+  }
+  const site =
+    hostnameFromUrl(details.initiator || "") ||
+    hostnameFromUrl(details.documentUrl || "") ||
+    (details.type === "main_frame" ? threatHost : null);
+  logThreat(threatHost, site);
 }
 
 function protectionScore(history) {
@@ -288,6 +506,149 @@ function protectionScore(history) {
     return 0;
   }
   return Math.round((blocked / detected) * 100);
+}
+
+async function isPaused() {
+  const stored = await chrome.storage.local.get("pauseState");
+  const pauseState = stored.pauseState;
+  if (!pauseState) {
+    return false;
+  }
+  if (pauseState.until === "startup") {
+    return true;
+  }
+  if (typeof pauseState.until === "number") {
+    if (Date.now() >= pauseState.until) {
+      await chrome.storage.local.remove("pauseState");
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+async function getPauseState() {
+  const paused = await isPaused();
+  const stored = await chrome.storage.local.get("pauseState");
+  return {
+    paused,
+    until: paused ? stored.pauseState?.until ?? null : null
+  };
+}
+
+async function disableAllProtection() {
+  const trackerRulesets = CATEGORY_ORDER.map((category) => RULESET_ID_BY_CATEGORY[category]);
+  await chrome.declarativeNetRequest.updateEnabledRulesets({
+    disableRulesetIds: [...trackerRulesets, "ruleset_threats"]
+  });
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const removeRuleIds = existing
+    .filter((rule) => rule.id >= THREAT_RULE_ID_BASE && rule.id < THREAT_RULE_ID_MAX)
+    .map((rule) => rule.id);
+  if (removeRuleIds.length) {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds,
+      addRules: []
+    });
+  }
+  try {
+    await chrome.action.setBadgeText({ text: "OFF" });
+    await chrome.action.setBadgeBackgroundColor({ color: "#8a5a12" });
+    await chrome.action.setBadgeTextColor({ color: "#ffffff" });
+  } catch (error) {
+    console.warn("[Glass] paused badge", error);
+  }
+}
+
+async function setPause(until) {
+  if (!until) {
+    await chrome.storage.local.remove("pauseState");
+    await chrome.alarms.clear(PAUSE_ALARM);
+    await installThreatRules();
+    await syncActiveTabBlocking();
+    return { paused: false, until: null };
+  }
+  await chrome.storage.local.set({ pauseState: { until } });
+  if (typeof until === "number") {
+    await chrome.alarms.create(PAUSE_ALARM, { when: until });
+  } else {
+    await chrome.alarms.clear(PAUSE_ALARM);
+  }
+  await disableAllProtection();
+  return { paused: true, until };
+}
+
+function parseTypedHost(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) {
+    return null;
+  }
+  try {
+    const url = raw.includes("://") ? new URL(raw) : new URL("https://" + raw.replace(/^\/\//, ""));
+    return normalizeHost(url.hostname);
+  } catch {
+    return normalizeHost(raw.replace(/^www\./, "").split("/")[0]);
+  }
+}
+
+function isHttpTabUrl(url) {
+  return Boolean(url && /^https?:/i.test(url));
+}
+
+async function collectLiveTabs() {
+  const tabs = await chrome.tabs.query({});
+  const results = [];
+  for (const tab of tabs) {
+    if (tab.id == null || !isHttpTabUrl(tab.url)) {
+      continue;
+    }
+    const host = hostnameFromUrl(tab.url);
+    const data = await snapshot(tab.id);
+    results.push({
+      tabId: tab.id,
+      title: tab.title || host || "",
+      url: tab.url,
+      domain: data.domain || host,
+      favIconUrl: tab.favIconUrl || "",
+      detectedCount: data.detectedCount || 0,
+      blockedCount: data.blockedCount || 0,
+      activeCount: data.activeCount || 0,
+      trackers: data.trackers,
+      blockedTrackers: data.blockedTrackers
+    });
+  }
+  results.sort((a, b) => b.detectedCount - a.detectedCount || String(a.domain).localeCompare(String(b.domain)));
+  return results;
+}
+
+async function applyBlockingForMatchingTabs(host) {
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    const tabHost = hostnameFromUrl(tab.url || "");
+    if (
+      tabHost &&
+      (tabHost === host || tabHost.endsWith("." + host) || host.endsWith("." + tabHost))
+    ) {
+      await applyBlockingForHost(tabHost);
+    }
+  }
+}
+
+async function clearVisitHistory() {
+  await chrome.storage.local.set({ visitHistory: {} });
+}
+
+async function deleteHistoryEntry(day, host) {
+  const stored = await chrome.storage.local.get("visitHistory");
+  const history = stored.visitHistory || {};
+  if (history[day]) {
+    delete history[day][host];
+    if (!Object.keys(history[day]).length) {
+      delete history[day];
+    }
+  }
+  await chrome.storage.local.set({ visitHistory: history });
+  return history;
 }
 
 async function getSitePrefs(host) {
@@ -319,6 +680,16 @@ async function installThreatRules() {
     .filter((rule) => rule.id >= THREAT_RULE_ID_BASE && rule.id < THREAT_RULE_ID_MAX)
     .map((rule) => rule.id);
 
+  if (await isPaused()) {
+    if (removeRuleIds.length) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds,
+        addRules: []
+      });
+    }
+    return;
+  }
+
   const addRules = THREAT_DOMAINS.map((domain, index) => {
     const warningUrl = new URL(chrome.runtime.getURL("warning.html"));
     warningUrl.searchParams.set("domain", domain);
@@ -347,6 +718,10 @@ async function installThreatRules() {
 }
 
 async function applyBlockingForHost(host) {
+  if (await isPaused()) {
+    await disableAllProtection();
+    return allCategoryPrefs(false);
+  }
   const trackerRulesets = CATEGORY_ORDER.map((category) => RULESET_ID_BY_CATEGORY[category]);
   if (await isWhitelisted(host)) {
     await chrome.declarativeNetRequest.updateEnabledRulesets({
@@ -396,7 +771,7 @@ function addBlockedHost(state, host) {
   return true;
 }
 
-async function getMatchedDomains(tabId) {
+async function getMatchedDomains(tabId, state) {
   const blocked = emptyTrackers();
   try {
     const result = await chrome.declarativeNetRequest.getMatchedRules({ tabId });
@@ -410,10 +785,10 @@ async function getMatchedDomains(tabId) {
   } catch (error) {
     console.warn("[Glass] getMatchedRules", error);
   }
-  const state = tabState.get(tabId);
-  if (state) {
+  const tab = state || (await getTabState(tabId));
+  if (tab) {
     for (const category of CATEGORY_ORDER) {
-      for (const domain of state.blockedHosts[category]) {
+      for (const domain of tab.blockedHosts[category]) {
         blocked[category].add(domain);
       }
     }
@@ -421,27 +796,9 @@ async function getMatchedDomains(tabId) {
   return blocked;
 }
 
-async function creditLifetime(tabId, blockedSets) {
-  const state = tabState.get(tabId);
-  if (!state) {
-    return;
-  }
-  let added = 0;
-  for (const category of CATEGORY_ORDER) {
-    for (const domain of blockedSets[category]) {
-      if (!state.lifetimeCredited.has(domain)) {
-        state.lifetimeCredited.add(domain);
-        added += 1;
-      }
-    }
-  }
-  if (!added) {
-    return;
-  }
+async function getLifetimeBlocked() {
   const stored = await chrome.storage.local.get("lifetimeBlocked");
-  await chrome.storage.local.set({
-    lifetimeBlocked: (stored.lifetimeBlocked || 0) + added
-  });
+  return stored.lifetimeBlocked || 0;
 }
 
 function severityFromCount(total) {
@@ -456,6 +813,12 @@ function severityFromCount(total) {
 
 async function setTabBadge(tabId, detectedCount, url) {
   try {
+    if (await isPaused()) {
+      await chrome.action.setBadgeText({ tabId, text: "OFF" });
+      await chrome.action.setBadgeBackgroundColor({ tabId, color: "#8a5a12" });
+      await chrome.action.setBadgeTextColor({ tabId, color: "#ffffff" });
+      return;
+    }
     const host = hostnameFromUrl(url || "");
     if (!host) {
       await chrome.action.setBadgeText({ tabId, text: "" });
@@ -478,8 +841,8 @@ async function setTabBadge(tabId, detectedCount, url) {
 }
 
 async function snapshot(tabId) {
-  const state = tabState.get(tabId);
-  const blockedSets = await getMatchedDomains(tabId);
+  const state = await getTabState(tabId);
+  const blockedSets = await getMatchedDomains(tabId, state);
 
   const activeLists = emptyLists();
   const blockedLists = emptyLists();
@@ -487,12 +850,15 @@ async function snapshot(tabId) {
   const blockedCounts = emptyCounts();
   const activeCounts = emptyCounts();
   const detected = new Set();
+  let blockedChanged = false;
 
   if (state) {
     for (const category of CATEGORY_ORDER) {
       for (const domain of state.trackers[category]) {
         if (hostMatchesBlocked(domain, blockedSets)) {
-          addBlockedHost(state, domain);
+          if (addBlockedHost(state, domain)) {
+            blockedChanged = true;
+          }
           continue;
         }
         activeLists[category].push(domain);
@@ -503,9 +869,12 @@ async function snapshot(tabId) {
         blockedSets[category].add(domain);
       }
     }
+    if (blockedChanged) {
+      state.dirty = true;
+      await putTabState(tabId, state);
+      await scheduleHistoryFlush(tabId);
+    }
   }
-
-  await creditLifetime(tabId, blockedSets);
 
   for (const category of CATEGORY_ORDER) {
     blockedLists[category] = Array.from(blockedSets[category]).sort();
@@ -523,7 +892,6 @@ async function snapshot(tabId) {
 
   const blockedCount = CATEGORY_ORDER.reduce((sum, key) => sum + blockedCounts[key], 0);
   const activeCount = CATEGORY_ORDER.reduce((sum, key) => sum + activeCounts[key], 0);
-  const stored = await chrome.storage.local.get("lifetimeBlocked");
 
   return {
     domain: state?.pageDomain || null,
@@ -537,7 +905,6 @@ async function snapshot(tabId) {
     detectedCount: detected.size,
     total: detected.size,
     thirdPartyCount: state?.requests.size || 0,
-    lifetimeBlocked: stored.lifetimeBlocked || 0,
     insecureForms: state?.insecureForms || []
   };
 }
@@ -554,6 +921,9 @@ async function refreshTabUi(tabId, url) {
     }
   }
   await setTabBadge(tabId, data.detectedCount, pageUrl);
+  if ((await getTabState(tabId))?.dirty) {
+    await scheduleHistoryFlush(tabId);
+  }
   return data;
 }
 
@@ -569,13 +939,18 @@ chrome.webRequest.onErrorOccurred.addListener(
     if (!requestHost) {
       return;
     }
-    const state = ensureTab(details.tabId);
-    if (isFirstParty(state.pageDomain, requestHost)) {
-      return;
-    }
-    if (addBlockedHost(state, requestHost)) {
-      refreshTabUi(details.tabId);
-    }
+    enqueueTab(details.tabId, async () => {
+      const state = await ensureTab(details.tabId);
+      if (isFirstParty(state.pageDomain, requestHost)) {
+        return;
+      }
+      if (addBlockedHost(state, requestHost)) {
+        state.dirty = true;
+        await putTabState(details.tabId, state);
+        await refreshTabUi(details.tabId);
+        await scheduleHistoryFlush(details.tabId);
+      }
+    });
   },
   { urls: ["<all_urls>"] }
 );
@@ -586,60 +961,106 @@ chrome.webRequest.onBeforeRequest.addListener(
       return;
     }
 
-    if (details.type === "main_frame") {
-      resetTab(details.tabId, details.url);
-      refreshTabUi(details.tabId, details.url);
-      return;
+    if (details.type === "main_frame" || details.type === "sub_frame") {
+      maybeLogThreatRequest(details);
     }
 
-    const requestHost = hostnameFromUrl(details.url);
-    if (!requestHost) {
-      return;
-    }
+    enqueueTab(details.tabId, async () => {
+      if (details.type === "main_frame") {
+        await flushHistoryForTab(details.tabId);
+        await resetTab(details.tabId, details.url);
+        await refreshTabUi(details.tabId, details.url);
+        return;
+      }
 
-    const state = ensureTab(details.tabId);
-    if (!state.pageDomain && details.initiator) {
-      state.pageDomain = hostnameFromUrl(details.initiator);
-    }
-    if (!state.pageDomain && details.documentUrl) {
-      state.pageDomain = hostnameFromUrl(details.documentUrl);
-    }
+      const requestHost = hostnameFromUrl(details.url);
+      if (!requestHost) {
+        return;
+      }
 
-    if (isFirstParty(state.pageDomain, requestHost)) {
-      return;
-    }
+      const state = await ensureTab(details.tabId);
+      let changed = false;
+      if (!state.pageDomain && details.initiator) {
+        state.pageDomain = hostnameFromUrl(details.initiator);
+        changed = true;
+      }
+      if (!state.pageDomain && details.documentUrl) {
+        state.pageDomain = hostnameFromUrl(details.documentUrl);
+        changed = true;
+      }
 
-    state.requests.add(requestHost);
-    const category = categorizeDomain(requestHost);
-    if (category && !state.trackers[category].has(requestHost)) {
-      state.trackers[category].add(requestHost);
-      refreshTabUi(details.tabId);
-    }
+      if (isFirstParty(state.pageDomain, requestHost)) {
+        if (changed) {
+          await putTabState(details.tabId, state);
+        }
+        return;
+      }
+
+      const requestCount = state.requests.size;
+      state.requests.add(requestHost);
+      if (state.requests.size !== requestCount) {
+        changed = true;
+      }
+      const category = categorizeDomain(requestHost);
+      let newTracker = false;
+      if (category && !state.trackers[category].has(requestHost)) {
+        state.trackers[category].add(requestHost);
+        newTracker = true;
+        changed = true;
+        state.dirty = true;
+      }
+      if (changed) {
+        await putTabState(details.tabId, state);
+      }
+      if (newTracker) {
+        await refreshTabUi(details.tabId);
+        await scheduleHistoryFlush(details.tabId);
+      }
+    });
   },
   { urls: ["<all_urls>"] }
 );
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url) {
-    resetTab(tabId, changeInfo.url);
-    applyBlockingForHost(hostnameFromUrl(changeInfo.url));
-    refreshTabUi(tabId, changeInfo.url);
+    enqueueTab(tabId, async () => {
+      const current = await getTabState(tabId);
+      const nextHost = hostnameFromUrl(changeInfo.url);
+      if (current?.pageDomain && nextHost && nextHost !== current.pageDomain) {
+        await flushHistoryForTab(tabId);
+        await resetTab(tabId, changeInfo.url);
+      } else {
+        await ensureTab(tabId, changeInfo.url);
+      }
+      await applyBlockingForHost(nextHost);
+      await refreshTabUi(tabId, changeInfo.url);
+    });
   } else if (changeInfo.status === "loading" && tab.url) {
-    const nextHost = hostnameFromUrl(tab.url);
-    const current = tabState.get(tabId);
-    if (nextHost && current && current.pageDomain && nextHost !== current.pageDomain) {
-      resetTab(tabId, tab.url);
-    } else if (!current) {
-      ensureTab(tabId, tab.url);
-    }
-    refreshTabUi(tabId, tab.url);
+    enqueueTab(tabId, async () => {
+      const nextHost = hostnameFromUrl(tab.url);
+      const current = await getTabState(tabId);
+      if (nextHost && current && current.pageDomain && nextHost !== current.pageDomain) {
+        await flushHistoryForTab(tabId);
+        await resetTab(tabId, tab.url);
+      } else {
+        await ensureTab(tabId, tab.url);
+      }
+      await refreshTabUi(tabId, tab.url);
+    });
   } else if (changeInfo.status === "complete") {
-    refreshTabUi(tabId, tab.url).then((data) => logVisit(tab.url, data));
+    enqueueTab(tabId, async () => {
+      await ensureTab(tabId, tab.url);
+      await refreshTabUi(tabId, tab.url);
+      await scheduleHistoryFlush(tabId);
+    });
   }
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  tabState.delete(tabId);
+  enqueueTab(tabId, async () => {
+    await flushHistoryForTab(tabId);
+    await removeTabState(tabId);
+  });
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
@@ -678,9 +1099,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         tabUrl = tab.url || "";
         host = hostnameFromUrl(tabUrl);
         favIconUrl = tab.favIconUrl || "";
-        ensureTab(tabId, tabUrl);
+        await enqueueTab(tabId, () => ensureTab(tabId, tabUrl));
       } catch {
-        host = tabState.get(tabId)?.pageDomain || null;
+        host = (await getTabState(tabId))?.pageDomain || null;
       }
       const whitelisted = await isWhitelisted(host);
       const prefs = await getSitePrefs(host);
@@ -690,8 +1111,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       data.favIconUrl = favIconUrl;
       data.whitelisted = whitelisted;
-      data.blockingEnabled = !whitelisted && isBlockingEnabled(prefs);
+      const pause = await getPauseState();
+      data.paused = pause.paused;
+      data.pauseUntil = pause.until;
+      data.blockingEnabled = !whitelisted && !pause.paused && isBlockingEnabled(prefs);
       data.categoryBlocking = prefs;
+      data.lifetimeBlocked = await getLifetimeBlocked();
       sendResponse(data);
     })();
     return true;
@@ -741,7 +1166,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const host = normalizeHost(message.host);
       const trusted = Boolean(message.trusted);
       await setWhitelisted(host, trusted);
-      await applyBlockingForHost(host);
+      await applyBlockingForMatchingTabs(host);
       sendResponse({ ok: true, whitelisted: trusted, host });
     })();
     return true;
@@ -752,34 +1177,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (tabId == null) {
       return false;
     }
-    const state = ensureTab(tabId);
-    state.insecureForms = message.warnings || [];
+    enqueueTab(tabId, async () => {
+      const state = await ensureTab(tabId, sender.tab?.url);
+      state.insecureForms = message.warnings || [];
+      await putTabState(tabId, state);
+    });
     sendResponse({ ok: true });
     return false;
   }
 
   if (message?.type === "LOG_THREAT_BLOCK") {
     (async () => {
-      await logThreat(message.domain);
+      await logThreat(message.domain, message.site);
       sendResponse({ ok: true });
+    })();
+    return true;
+  }
+
+  if (message?.type === "GET_LIVE_TABS") {
+    (async () => {
+      sendResponse({ tabs: await collectLiveTabs() });
     })();
     return true;
   }
 
   if (message?.type === "GET_DASHBOARD_DATA") {
     (async () => {
-      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-      let live = null;
-      if (tab?.id != null) {
-        const host = hostnameFromUrl(tab.url || "");
-        const prefs = await getSitePrefs(host);
-        live = await refreshTabUi(tab.id, tab.url);
-        live.domain = live.domain || host;
-        live.favIconUrl = tab.favIconUrl || "";
-        live.whitelisted = await isWhitelisted(host);
-        live.blockingEnabled = !live.whitelisted && isBlockingEnabled(prefs);
-        live.categoryBlocking = prefs;
-      }
       const stored = await chrome.storage.local.get([
         "lifetimeBlocked",
         "lifetimeThreatsBlocked",
@@ -789,15 +1212,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       ]);
       const settings = await getSettings();
       const visitHistory = stored.visitHistory || {};
+      const pause = await getPauseState();
       sendResponse({
-        live,
         lifetimeBlocked: stored.lifetimeBlocked || 0,
         lifetimeThreatsBlocked: stored.lifetimeThreatsBlocked || 0,
         visitHistory,
         threatLog: stored.threatLog || [],
         whitelist: stored.whitelist || [],
         settings,
-        protectionScore: protectionScore(visitHistory)
+        protectionScore: protectionScore(visitHistory),
+        paused: pause.paused,
+        pauseUntil: pause.until
       });
     })();
     return true;
@@ -813,8 +1238,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === "REMOVE_WHITELIST_ENTRY") {
     (async () => {
-      await setWhitelisted(message.host, false);
+      const host = parseTypedHost(message.host) || normalizeHost(message.host);
+      await setWhitelisted(host, false);
+      await applyBlockingForMatchingTabs(host);
       sendResponse({ ok: true, whitelist: await getWhitelist() });
+    })();
+    return true;
+  }
+
+  if (message?.type === "ADD_WHITELIST_ENTRY") {
+    (async () => {
+      const host = parseTypedHost(message.host);
+      if (!host) {
+        sendResponse({ ok: false, error: "Enter a valid domain." });
+        return;
+      }
+      await setWhitelisted(host, true);
+      await applyBlockingForMatchingTabs(host);
+      sendResponse({ ok: true, whitelist: await getWhitelist(), host });
+    })();
+    return true;
+  }
+
+  if (message?.type === "CLEAR_HISTORY") {
+    (async () => {
+      await clearVisitHistory();
+      sendResponse({ ok: true, visitHistory: {} });
+    })();
+    return true;
+  }
+
+  if (message?.type === "DELETE_HISTORY_ENTRY") {
+    (async () => {
+      const visitHistory = await deleteHistoryEntry(message.day, normalizeHost(message.host));
+      sendResponse({ ok: true, visitHistory });
+    })();
+    return true;
+  }
+
+  if (message?.type === "SET_PAUSE") {
+    (async () => {
+      const result = await setPause(message.until ?? null);
+      sendResponse({ ok: true, ...result });
+    })();
+    return true;
+  }
+
+  if (message?.type === "GET_PAUSE") {
+    (async () => {
+      sendResponse({ ok: true, ...(await getPauseState()) });
     })();
     return true;
   }
@@ -824,7 +1296,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await installThreatRules();
       sendResponse({
         ok: true,
-        message: "Threat rules reloaded. To refresh EasyPrivacy tracker rules, run `node generate-rules.js` then reload Glass."
+        message: "Bundled threat rules reloaded."
       });
     })();
     return true;
@@ -836,6 +1308,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function syncActiveTabBlocking() {
   try {
     await pruneHistory();
+    await flushStaleSessionTabs();
+    if (await isPaused()) {
+      await disableAllProtection();
+      return;
+    }
     await installThreatRules();
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab) {
@@ -847,8 +1324,27 @@ async function syncActiveTabBlocking() {
   }
 }
 
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === PAUSE_ALARM) {
+    setPause(null);
+    return;
+  }
+  if (alarm.name.startsWith(HISTORY_FLUSH_PREFIX)) {
+    const tabId = Number(alarm.name.slice(HISTORY_FLUSH_PREFIX.length));
+    if (Number.isFinite(tabId)) {
+      enqueueTab(tabId, () => flushHistoryForTab(tabId));
+    }
+  }
+});
+
 chrome.runtime.onInstalled.addListener(syncActiveTabBlocking);
-chrome.runtime.onStartup.addListener(syncActiveTabBlocking);
+chrome.runtime.onStartup.addListener(async () => {
+  const stored = await chrome.storage.local.get("pauseState");
+  if (stored.pauseState?.until === "startup") {
+    await chrome.storage.local.remove("pauseState");
+  }
+  await syncActiveTabBlocking();
+});
 syncActiveTabBlocking();
 
 console.log("[Glass] service worker ready");

@@ -32,6 +32,10 @@ const trustToggleEl = document.getElementById("trust-toggle");
 const securityWrapEl = document.getElementById("security-wrap");
 const securityWarningsEl = document.getElementById("security-warnings");
 const dashboardBtn = document.getElementById("open-dashboard");
+const pauseBannerEl = document.getElementById("pause-banner");
+const pauseHintEl = document.getElementById("pause-hint");
+const pauseControlsEl = document.getElementById("pause-controls");
+const resumeBtn = document.getElementById("resume-protection");
 
 let currentHost = null;
 
@@ -186,6 +190,30 @@ function renderLifetime(count) {
   lifetimeEl.textContent = `Glass has blocked ${formatted} trackers since install.`;
 }
 
+function pauseLabel(until) {
+  if (until === "startup") {
+    return "Blocking is off until the browser restarts.";
+  }
+  if (typeof until === "number") {
+    const mins = Math.max(1, Math.round((until - Date.now()) / 60000));
+    return `Blocking is off for about ${mins} more minute${mins === 1 ? "" : "s"}.`;
+  }
+  return "Blocking is off until you resume.";
+}
+
+function renderPause(data) {
+  const paused = Boolean(data.paused);
+  pauseBannerEl.hidden = !paused;
+  pauseControlsEl.hidden = paused;
+  if (paused) {
+    pauseHintEl.textContent = pauseLabel(data.pauseUntil);
+    statusEl.textContent = "Protection paused";
+    toggleEl.disabled = true;
+    trustToggleEl.disabled = true;
+    categoryTogglesEl.hidden = true;
+  }
+}
+
 function render(data, hostFallback, isHttp) {
   const host = data.domain || hostFallback;
   currentHost = host;
@@ -214,8 +242,9 @@ function render(data, hostFallback, isHttp) {
   renderLifetime(data.lifetimeBlocked || 0);
   renderSecurityWarnings(data);
   renderTrustToggle(data, isHttp);
+  renderPause(data);
 
-  const canToggle = Boolean(host) && isHttp && !data.whitelisted;
+  const canToggle = Boolean(host) && isHttp && !data.whitelisted && !data.paused;
   toggleEl.disabled = !canToggle;
   toggleEl.checked = Boolean(data.blockingEnabled);
   document.body.classList.remove("is-loading");
@@ -224,9 +253,10 @@ function render(data, hostFallback, isHttp) {
 
 async function load() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const pause = await chrome.runtime.sendMessage({ type: "GET_PAUSE" });
   if (!tab) {
     statusEl.textContent = "No active tab";
-    render({ total: 0, counts: {}, trackers: {} }, null, false);
+    render({ total: 0, counts: {}, trackers: {}, ...(pause || {}) }, null, false);
     return;
   }
 
@@ -245,7 +275,9 @@ async function load() {
         detectedCount: 0,
         counts: {},
         trackers: {},
-        favIconUrl: tab.favIconUrl
+        favIconUrl: tab.favIconUrl,
+        paused: pause?.paused,
+        pauseUntil: pause?.until
       },
       host,
       false
@@ -295,6 +327,23 @@ trustToggleEl.addEventListener("change", async () => {
 
 dashboardBtn.addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
+});
+
+async function setPause(until) {
+  await chrome.runtime.sendMessage({ type: "SET_PAUSE", until });
+  await load();
+}
+
+pauseControlsEl.querySelectorAll("[data-pause]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const value = button.dataset.pause;
+    const until = value === "startup" ? "startup" : Date.now() + Number(value);
+    await setPause(until);
+  });
+});
+
+resumeBtn.addEventListener("click", async () => {
+  await setPause(null);
 });
 
 load().catch((error) => {

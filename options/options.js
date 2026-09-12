@@ -5,6 +5,10 @@ const CATEGORIES = [
   { id: "other", label: "Other" }
 ];
 
+let expandedTabId = null;
+let liveTimer = null;
+let dashboardCache = {};
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -20,6 +24,11 @@ function formatTime(ts) {
   }
 }
 
+function currentTabId() {
+  const active = document.querySelector(".tab.is-active");
+  return active?.dataset.tab || "overview";
+}
+
 function switchTab(id) {
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.tab === id);
@@ -27,6 +36,60 @@ function switchTab(id) {
   document.querySelectorAll(".panel").forEach((panel) => {
     panel.classList.toggle("is-active", panel.id === "panel-" + id);
   });
+  syncLivePolling();
+}
+
+function dateKey(offsetDays) {
+  const date = new Date();
+  date.setDate(date.getDate() - offsetDays);
+  return date.toISOString().slice(0, 10);
+}
+
+function dayTotals(history) {
+  const days = [];
+  for (let i = 6; i >= 0; i -= 1) {
+    const key = dateKey(i);
+    const labelDate = new Date();
+    labelDate.setDate(labelDate.getDate() - i);
+    let blocked = 0;
+    for (const site of Object.values(history[key] || {})) {
+      blocked += Number(site.blocked) || 0;
+    }
+    days.push({
+      key,
+      blocked,
+      label: labelDate.toLocaleDateString(undefined, { weekday: "short" })
+    });
+  }
+  return days;
+}
+
+function renderChart(history) {
+  const days = dayTotals(history || {});
+  const max = Math.max(1, ...days.map((day) => day.blocked));
+  const width = 560;
+  const height = 140;
+  const barWidth = 56;
+  const gap = 20;
+  const chartLeft = 28;
+  const chartBottom = 118;
+  const bars = days
+    .map((day, index) => {
+      const barHeight = Math.round((day.blocked / max) * 90);
+      const x = chartLeft + index * (barWidth + gap);
+      const y = chartBottom - barHeight;
+      return `
+        <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="6" fill="#5b7c99"></rect>
+        <text x="${x + barWidth / 2}" y="${y - 6}" text-anchor="middle" class="chart-value">${day.blocked}</text>
+        <text x="${x + barWidth / 2}" y="136" text-anchor="middle" class="chart-label">${escapeHtml(day.label)}</text>
+      `;
+    })
+    .join("");
+  document.getElementById("overview-chart").innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Trackers blocked over the last 7 days">
+      ${bars}
+    </svg>
+  `;
 }
 
 function renderOverview(data) {
@@ -37,30 +100,13 @@ function renderOverview(data) {
     data.lifetimeThreatsBlocked || 0
   ).toLocaleString();
   document.getElementById("stat-score").textContent = `${data.protectionScore || 0}%`;
+  renderChart(data.visitHistory);
 }
 
-function renderLive(data) {
-  const live = data.live;
-  const domainEl = document.getElementById("live-domain");
-  const summaryEl = document.getElementById("live-summary");
-  const listEl = document.getElementById("live-list");
-  if (!live || !live.domain) {
-    domainEl.textContent = "Current tab";
-    summaryEl.textContent = "Open a website, then return here to inspect live trackers.";
-    listEl.innerHTML = "";
-    return;
-  }
-  domainEl.textContent = live.domain;
-  const detected = live.detectedCount || 0;
-  const blocked = live.blockedCount || 0;
-  const active = live.activeCount || 0;
-  summaryEl.textContent = live.blockingEnabled
-    ? `${detected} detected · ${blocked} blocked · ${active} still active`
-    : `${detected} trackers detected`;
-
+function trackerGroupsHtml(tab) {
   const groups = CATEGORIES.map((category) => {
-    const blockedItems = live.blockedTrackers?.[category.id] || [];
-    const activeItems = live.trackers?.[category.id] || [];
+    const blockedItems = tab.blockedTrackers?.[category.id] || [];
+    const activeItems = tab.trackers?.[category.id] || [];
     if (!blockedItems.length && !activeItems.length) {
       return "";
     }
@@ -75,7 +121,47 @@ function renderLive(data) {
       .join("");
     return `<p class="group-label">${category.label}</p>${blockedRows}${activeRows}`;
   }).join("");
-  listEl.innerHTML = groups || `<p class="hint">No known trackers on this page.</p>`;
+  return groups || `<p class="hint">No known trackers on this page.</p>`;
+}
+
+function renderLive(payload) {
+  const tabs = payload?.tabs || [];
+  const summaryEl = document.getElementById("live-summary");
+  const listEl = document.getElementById("live-list");
+  if (!tabs.length) {
+    summaryEl.textContent = "No website tabs are open. Open a site in another tab — this list updates every few seconds.";
+    listEl.innerHTML = "";
+    return;
+  }
+  summaryEl.textContent = `${tabs.length} open site${tabs.length === 1 ? "" : "s"}, sorted by tracker count.`;
+  listEl.innerHTML = tabs
+    .map((tab) => {
+      const open = Number(expandedTabId) === Number(tab.tabId);
+      const favicon = tab.favIconUrl
+        ? `<img class="live-favicon" src="${escapeHtml(tab.favIconUrl)}" alt="" />`
+        : `<span class="live-favicon"></span>`;
+      return `
+        <article class="live-row${open ? " is-open" : ""}" data-tab-id="${tab.tabId}">
+          <button type="button" class="live-head" data-tab-id="${tab.tabId}">
+            ${favicon}
+            <span class="live-meta">
+              <strong>${escapeHtml(tab.domain || "unknown")}</strong>
+              <span class="hint">${tab.detectedCount} detected · ${tab.blockedCount} blocked · ${tab.activeCount} active</span>
+            </span>
+          </button>
+          ${open ? `<div class="live-detail">${trackerGroupsHtml(tab)}</div>` : ""}
+        </article>
+      `;
+    })
+    .join("");
+
+  listEl.querySelectorAll(".live-head").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = Number(button.dataset.tabId);
+      expandedTabId = expandedTabId === id ? null : id;
+      renderLive(payload);
+    });
+  });
 }
 
 function renderThreats(data) {
@@ -86,11 +172,11 @@ function renderThreats(data) {
     return;
   }
   el.innerHTML =
-    `<div class="row header"><span>Domain</span><span>When</span><span></span></div>` +
+    `<div class="row header threat-row"><span>Domain</span><span>Encountered on</span><span>When</span></div>` +
     list
       .map(
         (item) =>
-          `<div class="row"><span class="mono">${escapeHtml(item.domain)}</span><span>${escapeHtml(formatTime(item.ts))}</span><span></span></div>`
+          `<div class="row threat-row"><span class="mono">${escapeHtml(item.domain)}</span><span class="mono">${escapeHtml(item.site || item.domain)}</span><span>${escapeHtml(formatTime(item.ts))}</span></div>`
       )
       .join("");
 }
@@ -103,19 +189,60 @@ function renderHistory(data) {
     el.innerHTML = `<p class="hint">Browse a few sites with Glass loaded, then reopen this tab.</p>`;
     return;
   }
-  const rows = [];
-  rows.push(
-    `<div class="row header"><span>Site</span><span>Detected / blocked</span><span>Day</span></div>`
-  );
+  const rows = [
+    `<div class="row header history-row"><span>Site</span><span>Detected / blocked</span><span>Day</span><span></span></div>`
+  ];
   for (const day of days) {
     const sites = Object.entries(history[day] || {}).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0));
     for (const [host, stats] of sites) {
       rows.push(
-        `<div class="row"><span class="mono">${escapeHtml(host)}</span><span>${stats.detected || 0} / ${stats.blocked || 0}</span><span>${escapeHtml(day)}</span></div>`
+        `<div class="row history-row">
+          <span class="mono">${escapeHtml(host)}</span>
+          <span>${stats.detected || 0} / ${stats.blocked || 0}</span>
+          <span>${escapeHtml(day)}</span>
+          <button type="button" class="remove row-delete" data-day="${escapeHtml(day)}" data-host="${escapeHtml(host)}" aria-label="Delete ${escapeHtml(host)} on ${escapeHtml(day)}">×</button>
+        </div>`
       );
     }
   }
   el.innerHTML = rows.join("");
+  el.querySelectorAll(".row-delete").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const result = await chrome.runtime.sendMessage({
+        type: "DELETE_HISTORY_ENTRY",
+        day: button.dataset.day,
+        host: button.dataset.host
+      });
+      dashboardCache.visitHistory = result.visitHistory || {};
+      renderHistory(dashboardCache);
+      renderOverview(dashboardCache);
+    });
+  });
+}
+
+function renderWhitelist(list) {
+  const whitelist = list || [];
+  const listEl = document.getElementById("whitelist-list");
+  if (!whitelist.length) {
+    listEl.innerHTML = `<p class="hint">No trusted sites yet.</p>`;
+    return;
+  }
+  listEl.innerHTML = whitelist
+    .map(
+      (host) =>
+        `<div class="whitelist-row"><span class="mono">${escapeHtml(host)}</span><button type="button" class="remove" data-host="${escapeHtml(host)}" aria-label="Remove ${escapeHtml(host)}">×</button></div>`
+    )
+    .join("");
+  listEl.querySelectorAll("button[data-host]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const result = await chrome.runtime.sendMessage({
+        type: "REMOVE_WHITELIST_ENTRY",
+        host: button.dataset.host
+      });
+      dashboardCache.whitelist = result.whitelist || [];
+      renderWhitelist(dashboardCache.whitelist);
+    });
+  });
 }
 
 function renderSettings(data) {
@@ -133,50 +260,105 @@ function renderSettings(data) {
         type: "UPDATE_SETTINGS",
         settings: { defaultCategoryBlocking: next }
       });
-      await load();
+      dashboardCache.settings = {
+        ...(dashboardCache.settings || {}),
+        defaultCategoryBlocking: next
+      };
     });
   });
 
-  const whitelist = data.whitelist || [];
-  const listEl = document.getElementById("whitelist-list");
-  if (!whitelist.length) {
-    listEl.innerHTML = `<p class="hint">No trusted sites yet. Use “Trust this site” in the popup.</p>`;
-    return;
+  renderWhitelist(data.whitelist);
+}
+
+async function refreshLive() {
+  const data = await chrome.runtime.sendMessage({ type: "GET_LIVE_TABS" });
+  renderLive(data || { tabs: [] });
+}
+
+function syncLivePolling() {
+  const liveVisible = currentTabId() === "live" && document.visibilityState === "visible";
+  if (liveVisible && !liveTimer) {
+    refreshLive().catch((error) => console.error(error));
+    liveTimer = setInterval(() => {
+      refreshLive().catch((error) => console.error(error));
+    }, 3000);
   }
-  listEl.innerHTML = whitelist
-    .map(
-      (host) =>
-        `<div class="whitelist-row"><span class="mono">${escapeHtml(host)}</span><button type="button" class="remove" data-host="${escapeHtml(host)}">Remove</button></div>`
-    )
-    .join("");
-  listEl.querySelectorAll("button[data-host]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      await chrome.runtime.sendMessage({
-        type: "REMOVE_WHITELIST_ENTRY",
-        host: button.dataset.host
-      });
-      await load();
-    });
-  });
+  if (!liveVisible && liveTimer) {
+    clearInterval(liveTimer);
+    liveTimer = null;
+  }
 }
 
 async function load() {
   const data = await chrome.runtime.sendMessage({ type: "GET_DASHBOARD_DATA" });
-  renderOverview(data || {});
-  renderLive(data || {});
-  renderThreats(data || {});
-  renderHistory(data || {});
-  renderSettings(data || {});
+  dashboardCache = data || {};
+  renderOverview(dashboardCache);
+  renderThreats(dashboardCache);
+  renderHistory(dashboardCache);
+  renderSettings(dashboardCache);
+  if (currentTabId() === "live") {
+    await refreshLive();
+  }
 }
 
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => switchTab(tab.dataset.tab));
 });
 
+document.addEventListener("visibilitychange", syncLivePolling);
+
 document.getElementById("regen-rules").addEventListener("click", async () => {
   const status = document.getElementById("regen-status");
   const result = await chrome.runtime.sendMessage({ type: "REGENERATE_RULES" });
   status.textContent = result?.message || "Done.";
+});
+
+document.getElementById("trust-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = document.getElementById("trust-input");
+  const errorEl = document.getElementById("trust-error");
+  const result = await chrome.runtime.sendMessage({
+    type: "ADD_WHITELIST_ENTRY",
+    host: input.value
+  });
+  if (!result?.ok) {
+    errorEl.hidden = false;
+    errorEl.textContent = result?.error || "Could not add that domain.";
+    return;
+  }
+  errorEl.hidden = true;
+  input.value = "";
+  dashboardCache.whitelist = result.whitelist || [];
+  renderWhitelist(dashboardCache.whitelist);
+});
+
+document.getElementById("clear-history").addEventListener("click", async () => {
+  if (!confirm("Clear the last 7 days of visit history? This cannot be undone.")) {
+    return;
+  }
+  await chrome.runtime.sendMessage({ type: "CLEAR_HISTORY" });
+  dashboardCache.visitHistory = {};
+  dashboardCache.protectionScore = 0;
+  renderHistory(dashboardCache);
+  renderOverview(dashboardCache);
+});
+
+document.getElementById("export-data").addEventListener("click", async () => {
+  const data = await chrome.runtime.sendMessage({ type: "GET_DASHBOARD_DATA" });
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    history: data?.visitHistory || {},
+    threatLog: data?.threatLog || [],
+    whitelist: data?.whitelist || []
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const stamp = new Date().toISOString().slice(0, 10);
+  await chrome.downloads.download({
+    url,
+    filename: `glass-export-${stamp}.json`,
+    saveAs: true
+  });
 });
 
 load().catch((error) => {

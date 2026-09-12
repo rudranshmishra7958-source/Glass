@@ -437,3 +437,32 @@ body.is-loading .skeleton-target {
 .dashboard-link:hover {
   color: var(--ink);
 }
+
+.pause-banner,
+.pause-controls {
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.pause-banner {
+  background: var(--amber-soft);
+}
+
+.pause-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pause-btn {
+  border: 1px solid var(--line);
+  background: var(--glass-strong);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--ink);
+}

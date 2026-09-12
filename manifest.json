@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Glass",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "See what a website is doing behind your back — trackers, phishing, and risky downloads, all local.",
   "permissions": [
     "tabs",
@@ -11,7 +11,8 @@
     "declarativeNetRequest",
     "declarativeNetRequestFeedback",
     "downloads",
-    "notifications"
+    "notifications",
+    "alarms"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {

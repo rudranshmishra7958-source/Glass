@@ -41,13 +41,18 @@
             <p class="stat-value" id="stat-score">0%</p>
           </article>
         </div>
+        <div class="glass-panel">
+          <h2>Trackers blocked — last 7 days</h2>
+          <div id="overview-chart" class="chart-wrap"></div>
+        </div>
         <p class="hint">Protection score is blocked ÷ detected trackers over the last 7 days.</p>
       </section>
 
       <section class="panel" id="panel-live">
         <div class="glass-panel">
-          <h2 id="live-domain">Current tab</h2>
-          <p class="hint" id="live-summary">No live tab data yet.</p>
+          <h2>Across your open tabs</h2>
+          <p class="hint" id="live-summary">Reading open tabs…</p>
+          <p class="hint">Counts come from the same live session data as the popup.</p>
           <div id="live-list"></div>
         </div>
       </section>
@@ -61,7 +66,11 @@
 
       <section class="panel" id="panel-history">
         <div class="glass-panel">
-          <h2>Last 7 days</h2>
+          <div class="panel-head">
+            <h2>Last 7 days</h2>
+            <button type="button" class="action danger" id="clear-history">Clear history</button>
+          </div>
+          <p class="hint">Rows are saved about 5 seconds after tracking activity stops, or when you leave the site.</p>
           <div id="history-list" class="table"></div>
         </div>
       </section>
@@ -74,14 +83,25 @@
         </div>
         <div class="glass-panel">
           <h2>Trusted sites</h2>
+          <p class="hint">Same list as the popup’s “Trust this site” toggle.</p>
+          <form id="trust-form" class="trust-form">
+            <input id="trust-input" type="text" placeholder="example.com" autocomplete="off" />
+            <button type="submit" class="action">Add</button>
+          </form>
+          <p class="hint" id="trust-error" hidden></p>
           <div id="whitelist-list"></div>
         </div>
         <div class="glass-panel">
-          <h2>Regenerate rules</h2>
-          <p class="hint">Reloads phishing rules from the bundled URLhaus list. Tracker rules stay local — run <code>node generate-rules.js</code> then reload the extension to refresh EasyPrivacy coverage.</p>
-          <button type="button" class="action" id="regen-rules">Reload threat rules</button>
-          <p class="hint" id="regen-status"></p>
+          <h2>Export</h2>
+          <p class="hint">Download history, threat log, and trusted sites as JSON. Nothing is uploaded.</p>
+          <button type="button" class="action" id="export-data">Export data</button>
         </div>
+        <details class="glass-panel dev-tools">
+          <summary>Developer tools</summary>
+          <p class="hint">For maintainers only. Tracker rules ship pre-generated in the extension package.</p>
+          <button type="button" class="action" id="regen-rules">Reload bundled threat rules</button>
+          <p class="hint" id="regen-status"></p>
+        </details>
       </section>
     </main>
     <script src="options.js"></script>

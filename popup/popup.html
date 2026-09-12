@@ -21,6 +21,22 @@
       </div>
     </header>
 
+    <section class="pause-banner glass-panel" id="pause-banner" hidden>
+      <p class="toggle-title">Protection is paused</p>
+      <p class="toggle-hint" id="pause-hint">Blocking is off until you resume.</p>
+      <button type="button" class="dashboard-link" id="resume-protection">Resume protection</button>
+    </section>
+
+    <section class="pause-controls glass-panel" id="pause-controls">
+      <p class="toggle-title">Pause protection</p>
+      <p class="toggle-hint">Temporarily skip all blocking, including phishing redirects.</p>
+      <div class="pause-actions">
+        <button type="button" class="pause-btn" data-pause="600000">10 min</button>
+        <button type="button" class="pause-btn" data-pause="3600000">1 hour</button>
+        <button type="button" class="pause-btn" data-pause="startup">Until restart</button>
+      </div>
+    </section>
+
     <section class="badge glass-panel skeleton-target" id="badge" data-severity="green">
       <p class="badge-count" id="badge-count">—</p>
       <p class="badge-label" id="badge-label">trackers</p>

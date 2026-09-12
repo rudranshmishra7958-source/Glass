@@ -91,7 +91,13 @@
       document.getElementById("domain").textContent = blockedLabel();
       const domain = blockedLabel();
       if (domain && domain !== "unknown site" && chrome.runtime?.sendMessage) {
-        chrome.runtime.sendMessage({ type: "LOG_THREAT_BLOCK", domain }).catch(() => {});
+        let site = domain;
+        try {
+          site = new URL(document.referrer).hostname || domain;
+        } catch {
+          site = domain;
+        }
+        chrome.runtime.sendMessage({ type: "LOG_THREAT_BLOCK", domain, site }).catch(() => {});
       }
       document.getElementById("back").addEventListener("click", () => {
         history.length > 1 ? history.back() : (location.href = "about:blank");
