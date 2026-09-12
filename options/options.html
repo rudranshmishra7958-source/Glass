@@ -130,6 +130,20 @@
             <p>See past the domain names. Glass maps every tracker back to the company running it — so you know exactly who's watching, not just what.</p>
           </div>
         </article>
+        <article class="landing-feature enter-left">
+          <span class="landing-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21H17.5A1.5 1.5 0 0 0 19 19.5V8l-5-5z" />
+              <path d="M14 3v5h5" />
+              <path d="M8.5 13h7" />
+              <path d="M8.5 16.5h4.5" />
+            </svg>
+          </span>
+          <div>
+            <h3><span class="feature-title">Malware Scanning</span></h3>
+            <p>Local ClamAV and YARA scan every download on this device. High-risk files are flagged so you can delete them or keep going.</p>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -161,6 +175,7 @@
         <button type="button" class="tab" data-tab="live">Live Trackers</button>
         <button type="button" class="tab" data-tab="threats">Threat Log</button>
         <button type="button" class="tab" data-tab="history">History</button>
+        <button type="button" class="tab" data-tab="downloads">Downloads</button>
         <button type="button" class="tab" data-tab="settings">Settings</button>
       </nav>
 
@@ -250,6 +265,14 @@
               </div>
             </div>
             <div id="history-list" class="table"></div>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-downloads">
+          <div class="workspace-panel">
+            <h2 class="workspace-title">Download scans</h2>
+            <p class="workspace-intro hint">Local ClamAV and YARA verdicts for files this browser saved. Delete or keep each one.</p>
+            <div id="downloads-list" class="table"></div>
           </div>
         </section>
 

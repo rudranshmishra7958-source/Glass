@@ -19,6 +19,19 @@ const SEVERITY_COLORS = {
 const RISKY_DOWNLOAD =
   /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|jpg|jpeg|png|gif|zip|rar|mp3|mp4|avi)\.(exe|js|bat|scr|com|vbs|msi|cmd|ps1|jar|dll|apk)$/i;
 
+const NATIVE_HOST = "com.glass.scanner";
+const SCAN_HISTORY_CAP = 50;
+const DANGEROUS_DOWNLOAD_STATES = [
+  "content",
+  "url",
+  "host",
+  "file",
+  "unwanted",
+  "blockedTooLarge",
+  "sensitiveContentBlock",
+  "accountCompromise"
+];
+
 const PAUSE_ALARM = "glass-unpause";
 const HISTORY_FLUSH_PREFIX = "history-flush-";
 const HISTORY_FLUSH_MS = 5000;
@@ -1368,6 +1381,146 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   }
 });
 
+function downloadBasename(path) {
+  const parts = String(path || "").split(/[/\\]/);
+  return parts[parts.length - 1] || "download";
+}
+
+function connectNativeScan(request) {
+  return new Promise((resolve, reject) => {
+    let completed = false;
+    let port;
+    try {
+      port = chrome.runtime.connectNative(NATIVE_HOST);
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    function finish(callback, value) {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      try {
+        port.disconnect();
+      } catch {
+        // already closed
+      }
+      callback(value);
+    }
+
+    port.onMessage.addListener((message) => {
+      console.log("[Glass] native scan response", message);
+      finish(resolve, message);
+    });
+    port.onDisconnect.addListener(() => {
+      if (completed) {
+        return;
+      }
+      const error = chrome.runtime.lastError;
+      finish(
+        reject,
+        new Error(error?.message || "Glass native host disconnected.")
+      );
+    });
+    try {
+      port.postMessage(request);
+    } catch (error) {
+      finish(reject, error);
+    }
+  });
+}
+
+async function setScanRecord(downloadId, patch) {
+  const key = String(downloadId);
+  const stored = await chrome.storage.local.get(["downloadScans", "downloadScanHistory"]);
+  const scans = stored.downloadScans || {};
+  const next = {
+    ...(scans[key] || {}),
+    ...patch,
+    downloadId: Number(downloadId),
+    ts: patch.ts || Date.now()
+  };
+  scans[key] = next;
+  let history = Array.isArray(stored.downloadScanHistory)
+    ? stored.downloadScanHistory.filter((item) => String(item.downloadId) !== key)
+    : [];
+  history = [next, ...history].slice(0, SCAN_HISTORY_CAP);
+  await chrome.storage.local.set({
+    downloadScans: scans,
+    downloadScanHistory: history
+  });
+  return next;
+}
+
+async function persistScanResult(download, report) {
+  const risk = report?.assessment?.risk || "UNKNOWN";
+  const record = await setScanRecord(download.id, {
+    status: report?.status === "error" ? "error" : "completed",
+    filename: downloadBasename(download.filename),
+    path: download.filename || "",
+    url: download.finalUrl || download.url || "",
+    report,
+    risk,
+    error: report?.error || null
+  });
+  if (risk === "CRITICAL" || risk === "HIGH") {
+    chrome.notifications.create(`glass-scan-${download.id}`, {
+      type: "basic",
+      iconUrl: "icons/icon128.png",
+      title: `Glass: ${risk} download`,
+      message: record.filename
+    });
+  }
+  return record;
+}
+
+async function scanCompletedDownload(download) {
+  if (!download?.filename) {
+    return;
+  }
+  await setScanRecord(download.id, {
+    status: "scanning",
+    filename: downloadBasename(download.filename),
+    path: download.filename || "",
+    url: download.finalUrl || download.url || "",
+    report: null,
+    risk: null
+  });
+  try {
+    const report = await connectNativeScan({
+      action: "scan",
+      download: {
+        id: download.id,
+        filename: download.filename,
+        url: download.url || "",
+        finalUrl: download.finalUrl || "",
+        mime: download.mime || "",
+        danger: download.danger || "safe"
+      }
+    });
+    if (!report) {
+      throw new Error("Native host returned no scan report.");
+    }
+    if (report.status === "error") {
+      throw new Error(report.error || "Scanner returned an error.");
+    }
+    await persistScanResult(download, report);
+  } catch (error) {
+    console.warn("[Glass] download scan failed", error);
+    await setScanRecord(download.id, {
+      status: "error",
+      filename: downloadBasename(download.filename),
+      path: download.filename || "",
+      url: download.finalUrl || download.url || "",
+      report: null,
+      risk: "UNKNOWN",
+      error: error.message || String(error)
+    });
+  }
+}
+
 chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
   const name = item.filename || item.url.split("/").pop().split("?")[0] || "";
   if (RISKY_DOWNLOAD.test(name)) {
@@ -1379,6 +1532,36 @@ chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
     });
   }
   suggest({ filename: item.filename });
+});
+
+chrome.downloads.onChanged.addListener(async (delta) => {
+  if (delta.danger && DANGEROUS_DOWNLOAD_STATES.includes(delta.danger.current)) {
+    try {
+      const results = await chrome.downloads.search({ id: delta.id });
+      if (results[0]) {
+        await scanCompletedDownload(results[0]);
+      }
+    } catch (error) {
+      console.warn("[Glass] danger-state scan failed", error);
+    }
+    return;
+  }
+  if (!delta.state || delta.state.current !== "complete") {
+    return;
+  }
+  try {
+    const results = await chrome.downloads.search({ id: delta.id });
+    const download = results[0];
+    if (!download) {
+      return;
+    }
+    if (DANGEROUS_DOWNLOAD_STATES.includes(download.danger)) {
+      return;
+    }
+    await scanCompletedDownload(download);
+  } catch (error) {
+    console.warn("[Glass] completed-download scan failed", error);
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -1546,7 +1729,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         "visitHistory",
         "threatLog",
         "whitelist",
-        "trackerExceptions"
+        "trackerExceptions",
+        "downloadScanHistory",
+        "downloadScans"
       ]);
       const settings = await getSettings();
       const visitHistory = stored.visitHistory || {};
@@ -1563,8 +1748,71 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         protectionScore: protectionScore(visitHistory),
         paused: pause.paused,
         pauseUntil: pause.until,
-        watchers
+        watchers,
+        downloadScanHistory: stored.downloadScanHistory || [],
+        downloadScans: stored.downloadScans || {}
       });
+    })();
+    return true;
+  }
+
+  if (message?.type === "GET_DOWNLOAD_SCANS") {
+    (async () => {
+      const stored = await chrome.storage.local.get(["downloadScans", "downloadScanHistory"]);
+      const scans = stored.downloadScans || {};
+      const history = stored.downloadScanHistory || [];
+      const latest =
+        history[0] ||
+        Object.values(scans).sort((a, b) => (b.ts || 0) - (a.ts || 0))[0] ||
+        null;
+      sendResponse({ scans, history, latest });
+    })();
+    return true;
+  }
+
+  if (message?.type === "DELETE_SCANNED_FILE") {
+    (async () => {
+      const downloadId = Number(message.downloadId);
+      if (!Number.isFinite(downloadId)) {
+        sendResponse({ ok: false, error: "Missing download." });
+        return;
+      }
+      try {
+        await chrome.downloads.removeFile(downloadId);
+      } catch (error) {
+        sendResponse({ ok: false, error: error.message || "Could not delete that file." });
+        return;
+      }
+      await setScanRecord(downloadId, { action: "deleted" });
+      const stored = await chrome.storage.local.get(["downloadScans", "downloadScanHistory"]);
+      sendResponse({
+        ok: true,
+        scans: stored.downloadScans || {},
+        history: stored.downloadScanHistory || []
+      });
+    })();
+    return true;
+  }
+
+  if (message?.type === "SHOW_SCANNED_FILE") {
+    (async () => {
+      const downloadId = Number(message.downloadId);
+      if (!Number.isFinite(downloadId)) {
+        sendResponse({ ok: false, error: "Missing download." });
+        return;
+      }
+      try {
+        await chrome.downloads.show(downloadId);
+        await setScanRecord(downloadId, { action: "kept" });
+        const stored = await chrome.storage.local.get(["downloadScans", "downloadScanHistory"]);
+        sendResponse({
+          ok: true,
+          scans: stored.downloadScans || {},
+          history: stored.downloadScanHistory || []
+        });
+      } catch (error) {
+        sendResponse({ ok: false, error: error.message || "Could not open that file location." });
+      }
     })();
     return true;
   }

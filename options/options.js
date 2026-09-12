@@ -260,6 +260,54 @@ function renderLive(payload) {
   });
 }
 
+function renderDownloads(data) {
+  const el = document.getElementById("downloads-list");
+  const list = data.downloadScanHistory || [];
+  if (!list.length) {
+    el.innerHTML = `<p class="workspace-empty">Download a file with Glass loaded — scans appear here after they finish.</p>`;
+    return;
+  }
+  el.innerHTML =
+    `<div class="row header download-row"><span>File</span><span>Verdict</span><span>When</span><span></span></div>` +
+    list
+      .map((item) => {
+        const risk = item.risk || item.report?.assessment?.risk || item.status || "UNKNOWN";
+        const deleted = item.action === "deleted";
+        const scanning = item.status === "scanning";
+        const actions = scanning
+          ? `<span class="hint">Scanning…</span>`
+          : deleted
+          ? `<span class="hint">Removed</span>`
+          : `<span class="download-actions">
+              <button type="button" class="remove" data-scan-action="delete" data-download-id="${Number(item.downloadId)}">Delete</button>
+              <button type="button" class="watchers-see-all" data-scan-action="show" data-download-id="${Number(item.downloadId)}">Show</button>
+            </span>`;
+        return `<div class="row download-row">
+          <span class="mono">${escapeHtml(item.filename || "download")}</span>
+          <span class="scan-verdict" data-risk="${escapeHtml(risk)}">${escapeHtml(risk)}</span>
+          <span>${escapeHtml(formatTime(item.ts))}</span>
+          ${actions}
+        </div>`;
+      })
+      .join("");
+  el.querySelectorAll("[data-scan-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const type =
+        button.dataset.scanAction === "delete" ? "DELETE_SCANNED_FILE" : "SHOW_SCANNED_FILE";
+      const result = await chrome.runtime.sendMessage({
+        type,
+        downloadId: Number(button.dataset.downloadId)
+      });
+      if (result?.history) {
+        dashboardCache.downloadScanHistory = result.history;
+      }
+      if (result?.ok) {
+        renderDownloads(dashboardCache);
+      }
+    });
+  });
+}
+
 function renderThreats(data) {
   const list = data.threatLog || [];
   const el = document.getElementById("threat-list");
@@ -531,6 +579,7 @@ async function load() {
   renderOverview(dashboardCache);
   renderThreats(dashboardCache);
   renderHistory(dashboardCache);
+  renderDownloads(dashboardCache);
   fillHistoryFilterOptions(dashboardCache.visitHistory);
   renderSettings(dashboardCache);
   if (document.body.classList.contains("watchers-active")) {

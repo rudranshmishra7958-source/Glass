@@ -431,6 +431,98 @@ body.is-loading .skeleton-target {
   font-size: 11px;
 }
 
+.scan-wrap {
+  border-radius: 12px;
+  padding: 10px 10px 8px;
+  margin: 12px 0;
+}
+
+.scan-risk {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.scan-risk[data-risk="LOW"] {
+  color: var(--green);
+}
+
+.scan-risk[data-risk="MEDIUM"] {
+  color: var(--amber);
+}
+
+.scan-risk[data-risk="HIGH"],
+.scan-risk[data-risk="CRITICAL"] {
+  color: var(--red);
+}
+
+.scan-name {
+  font-weight: 650;
+  word-break: break-all;
+}
+
+.scan-reason {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 6px 0;
+}
+
+.scan-hash {
+  color: var(--muted);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.scan-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.scan-actions button {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 7px 8px;
+  background: var(--glass-strong);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.scan-actions button:hover {
+  color: var(--ink);
+}
+
+.scan-actions .scan-delete {
+  color: var(--red);
+}
+
+.scan-pulse {
+  animation: scan-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-pulse {
+    animation: none;
+  }
+}
+
+@keyframes scan-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .footer {
   margin-top: 10px;
   text-align: center;

@@ -339,7 +339,8 @@ h1 {
 
 #panel-live .live-meta strong,
 #panel-history .history-row .mono,
-#panel-threats .threat-row .mono {
+#panel-threats .threat-row .mono,
+#panel-downloads .download-row .mono {
   font-family: Arvo, ui-monospace, Consolas, monospace;
   font-weight: 700;
 }
@@ -498,12 +499,38 @@ code {
 }
 
 .history-row,
-.threat-row {
+.threat-row,
+.download-row {
   grid-template-columns: 1.4fr 1fr 1fr auto;
 }
 
 .threat-row {
   grid-template-columns: 1.2fr 1.2fr 1fr;
+}
+
+.download-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scan-verdict {
+  font-family: Oswald, "Segoe UI", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.scan-verdict[data-risk="LOW"] {
+  color: var(--green);
+}
+
+.scan-verdict[data-risk="MEDIUM"] {
+  color: #c49a72;
+}
+
+.scan-verdict[data-risk="HIGH"],
+.scan-verdict[data-risk="CRITICAL"] {
+  color: var(--red);
 }
 
 .live-row {

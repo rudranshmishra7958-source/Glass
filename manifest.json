@@ -11,6 +11,7 @@
     "declarativeNetRequest",
     "declarativeNetRequestFeedback",
     "downloads",
+    "nativeMessaging",
     "notifications",
     "alarms",
     "webNavigation"
