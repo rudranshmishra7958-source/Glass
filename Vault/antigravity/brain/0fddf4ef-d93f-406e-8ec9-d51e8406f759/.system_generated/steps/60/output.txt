@@ -1,0 +1,8 @@
+{"name":"README.md","sizeBytes":"4890"}
+{"name":"index.html","sizeBytes":"600"}
+{"name":"offline-vault.html","sizeBytes":"62539"}
+{"name":"package.json","sizeBytes":"361"}
+{"name":"src","isDir":true}
+{"name":"vite.config.js","sizeBytes":"213"}
+
+Summary: This directory contains 1 subdirectories and 5 files.

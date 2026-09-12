@@ -1,0 +1,125 @@
+/* In-page Auto-fill badge & dropdown styles - Isolated namespace */
+
+.__offline_vault_badge {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #090d16;
+  border: 1px solid #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2147483646;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+
+.__offline_vault_badge:hover {
+  transform: scale(1.1);
+  border-color: #34d399;
+  background: #111827;
+}
+
+.__offline_vault_badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+.__offline_vault_dropdown {
+  position: absolute;
+  background: #111827;
+  border: 1px solid #26334d;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  padding: 0.75rem;
+  z-index: 2147483647;
+  width: 260px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  color: #f8fafc;
+  animation: __offline_vault_fade_in 0.15s ease;
+}
+
+@keyframes __offline_vault_fade_in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.__offline_vault_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #1f293d;
+  font-weight: 600;
+  color: #10b981;
+  font-size: 12px;
+}
+
+.__offline_vault_item {
+  background: #1a2234;
+  border: 1px solid #26334d;
+  border-radius: 6px;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.__offline_vault_user {
+  font-weight: 600;
+  color: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.__offline_vault_actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.__offline_vault_btn {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.__offline_vault_btn_fill {
+  background: #10b981;
+  color: #042f2e;
+}
+
+.__offline_vault_btn_fill:hover {
+  background: #059669;
+}
+
+.__offline_vault_btn_copy {
+  background: #26334d;
+  color: #f8fafc;
+}
+
+.__offline_vault_btn_copy:hover {
+  background: #374665;
+}
+
+.__offline_vault_notice {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 0.5rem;
+  text-align: center;
+}

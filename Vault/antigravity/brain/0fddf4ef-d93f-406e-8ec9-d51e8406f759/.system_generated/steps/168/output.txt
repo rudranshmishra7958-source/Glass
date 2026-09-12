@@ -1,0 +1,124 @@
+The following changes were made by the replace_file_content tool to: C:\Users\vijay\.gemini\antigravity\scratch\offline-vault-extension\vault.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -362,24 +362,47 @@
+   slot.innerHTML = `
+     <div class="modal-overlay" id="import-modal-overlay">
+       <div class="modal-box" onclick="event.stopPropagation()">
+-        <h3 style="font-size:1.1rem;">Import from Localhost Web App Backup</h3>
++        <h3 style="font-size:1.2rem;">📂 Import Localhost Backup</h3>
+         <p style="font-size:12px;color:var(--text-secondary);">
+-          Select the <code>.json</code> backup exported from your localhost web app to copy all your existing passwords over in 1 click!
+-        </p>
+-        <form id="import-form" style="display:flex;flex-direction:column;gap:0.75rem;">
+-          <input type="file" id="import-file" accept=".json" required />
+-          <div>
+-            <label style="font-size:11px;color:var(--text-muted);">MASTER PASSWORD OF BACKUP</label>
+-            <input type="password" id="import-pass" class="form-input" placeholder="Password used to export" required />
+-          </div>
++          Select the <code>.json</code> backup file you exported from the localhost web app.
++        </p>
++        <form id="import-form" style="display:flex;flex-direction:column;gap:0.85rem;">
++          <div style="border:1px dashed var(--border-color);padding:1rem;border-radius:var(--radius);text-align:center;background:var(--bg-input);">
++            <label style="display:block;cursor:pointer;font-size:12px;color:var(--primary);font-weight:600;">
++              📁 Click to Choose Backup File (.json)
++              <input type="file" id="import-file" accept=".json" style="display:none;" required />
++            </label>
++            <div id="file-selected-status" style="font-size:11px;color:var(--text-muted);margin-top:4px;">
++              No file selected yet
++            </div>
++          </div>
++
++          <div id="pass-section">
++            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px;">MASTER PASSWORD (USED TO EXPORT BACKUP)</label>
++            <input type="password" id="import-pass" class="form-input" placeholder="Enter master password" required />
++          </div>
++
+           <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.5rem;">
+             <button type="button" class="btn btn-secondary" id="import-cancel">Cancel</button>
+-            <button type="submit" class="btn btn-primary">Decrypt & Import</button>
+-          </div>
+-        </form>
+-      </div>
+-    </div>
+-  `;
++            <button type="submit" class="btn btn-primary" id="btn-do-import">⚡ Decrypt & Import</button>
++          </div>
++        </form>
++      </div>
++    </div>
++  `;
++
++  const fileInput = document.getElementById('import-file');
++  const fileStatus = document.getElementById('file-selected-status');
++  const passInput = document.getElementById('import-pass');
++  const importBtn = document.getElementById('btn-do-import');
++
++  fileInput.onchange = () => {
++    if (fileInput.files && fileInput.files[0]) {
++      fileStatus.style.color = '#10b981';
++      fileStatus.textContent = `✓ Selected: ${fileInput.files[0].name}`;
++      passInput.focus();
++    }
++  };
+ 
+   document.getElementById('import-cancel').onclick = () => { slot.innerHTML = ''; };
+   document.getElementById('import-modal-overlay').onclick = () => { slot.innerHTML = ''; };
+@@ -386,8 +386,14 @@
+   document.getElementById('import-form').onsubmit = async (e) => {
+     e.preventDefault();
+-    const file = document.getElementById('import-file').files[0];
+-    const pass = document.getElementById('import-pass').value;
+-    if (!file) return;
++    const file = fileInput.files[0];
++    const pass = passInput.value;
++    if (!file) {
++      showToast('Please select a .json file first');
++      return;
++    }
++
++    importBtn.textContent = 'Decrypting...';
++    importBtn.disabled = true;
+ 
+     const reader = new FileReader();
+     reader.onload = async (evt) => {
+@@ -394,6 +394,6 @@
+         const backup = JSON.parse(evt.target.result);
+         if (!backup.salt || !backup.canary || !Array.isArray(backup.items)) {
+-          throw new Error('Invalid backup format');
++          throw new Error('Unrecognized backup format. Please select the .json file exported from Offline Vault.');
+         }
+ 
+         const backupKey = await deriveMasterKey(pass, backup.salt);
+@@ -400,4 +400,6 @@
+-        if (!test || test.canary !== CANARY_SECRET) throw new Error('Incorrect master password');
++        if (!test || test.canary !== CANARY_SECRET) {
++          throw new Error('Incorrect master password for this backup file.');
++        }
+ 
+         let count = 0;
+         for (const bItem of backup.items) {
+@@ -413,7 +413,7 @@
+             });
+             count++;
+           } catch (err) {
+-            console.error(err);
++            console.error('Failed to decrypt record', err);
+           }
+         }
+ 
+@@ -420,8 +420,10 @@
+         await loadItems();
+         renderDashboard();
+-        showToast(`Successfully imported ${count} items into the extension!`);
++        showToast(`🎉 Success! Imported ${count} credentials into your extension!`);
+       } catch (err) {
+-        showToast('Import failed: ' + err.message);
++        importBtn.textContent = '⚡ Decrypt & Import';
++        importBtn.disabled = false;
++        showToast('Import error: ' + err.message);
+       }
+     };
+     reader.readAsText(file);
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.

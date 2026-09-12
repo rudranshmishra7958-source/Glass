@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Chrome with Extension",
+      "type": "chrome",
+      "request": "launch",
+      "runtimeArgs": [
+        "--load-extension=${workspaceFolder}"
+      ],
+      "url": "https://github.com/login"
+    },
+    {
+      "name": "Launch Edge with Extension",
+      "type": "msedge",
+      "request": "launch",
+      "runtimeArgs": [
+        "--load-extension=${workspaceFolder}"
+      ],
+      "url": "https://github.com/login"
+    }
+  ]
+}
