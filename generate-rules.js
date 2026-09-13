@@ -200,20 +200,41 @@ function parseCosmeticSelectors(text) {
   return selectors;
 }
 
-function buildRules(category, domains) {
+function loadPriorityHosts() {
+  const file = path.join(RULES_DIR, "priority-hosts.json");
+  const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+  const firstParty = new Set((raw.firstParty || []).map(normalizeHost));
+  const seeded = [];
+  for (const category of CATEGORY_ORDER) {
+    for (const host of raw[category] || []) {
+      const domain = normalizeHost(host);
+      if (!domain) {
+        continue;
+      }
+      seeded.push({ domain, category });
+    }
+  }
+  return { firstParty, seeded };
+}
+
+function buildRules(category, domains, firstPartyHosts) {
   let id = RULE_ID_BASE[category];
   const rules = [];
   const indexEntries = [];
   for (const domain of domains) {
+    const firstParty = firstPartyHosts.has(domain);
+    const condition = {
+      urlFilter: "||" + domain + "^",
+      resourceTypes: RESOURCE_TYPES
+    };
+    if (!firstParty) {
+      condition.domainType = "thirdParty";
+    }
     rules.push({
       id,
-      priority: 1,
+      priority: firstParty ? 2 : 1,
       action: { type: "block" },
-      condition: {
-        urlFilter: "||" + domain + "^",
-        resourceTypes: RESOURCE_TYPES,
-        domainType: "thirdParty"
-      }
+      condition
     });
     indexEntries.push({ id, domain, category });
     id += 1;
@@ -262,7 +283,11 @@ if (typeof self !== "undefined") {
 
 async function main() {
   console.log("Fetching EasyList + EasyPrivacy…");
+  const { firstParty, seeded } = loadPriorityHosts();
   const domainMeta = new Map();
+  for (const item of seeded) {
+    domainMeta.set(item.domain, item.category);
+  }
   const cosmetics = [];
   const seenCosmetic = new Set();
   for (const source of FILTER_SOURCES) {
@@ -300,7 +325,18 @@ async function main() {
     social: [],
     other: []
   };
+  const prioritySeen = new Set();
+  for (const item of seeded) {
+    if (prioritySeen.has(item.domain)) {
+      continue;
+    }
+    prioritySeen.add(item.domain);
+    buckets[item.category].push(item.domain);
+  }
   for (const [domain, category] of domainMeta) {
+    if (prioritySeen.has(domain)) {
+      continue;
+    }
     buckets[category].push(domain);
   }
   const quotas = {
@@ -310,10 +346,10 @@ async function main() {
     other: 4000
   };
   const packed = {
-    advertising: buckets.advertising.slice(0, quotas.advertising),
-    analytics: buckets.analytics.slice(0, quotas.analytics),
-    social: buckets.social.slice(0, quotas.social),
-    other: buckets.other.slice(0, quotas.other)
+    advertising: buckets.advertising.slice(0, Math.max(quotas.advertising, buckets.advertising.filter((d) => prioritySeen.has(d)).length)),
+    analytics: buckets.analytics.slice(0, Math.max(quotas.analytics, buckets.analytics.filter((d) => prioritySeen.has(d)).length)),
+    social: buckets.social.slice(0, Math.max(quotas.social, buckets.social.filter((d) => prioritySeen.has(d)).length)),
+    other: buckets.other.slice(0, Math.max(quotas.other, buckets.other.filter((d) => prioritySeen.has(d)).length))
   };
   let remaining = MAX_RULES - (
     packed.advertising.length +
@@ -339,7 +375,7 @@ async function main() {
   const entries = [];
 
   for (const category of CATEGORY_ORDER) {
-    const { rules, indexEntries } = buildRules(category, buckets[category]);
+    const { rules, indexEntries } = buildRules(category, buckets[category], firstParty);
     if (rules.length > 30000) {
       throw new Error(category + " exceeds 30000 DNR rules");
     }

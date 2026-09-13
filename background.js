@@ -295,6 +295,8 @@ function allCategoryPrefs(enabled) {
 }
 
 const EXCEPTION_RULE_ID_BASE = 800001;
+const SITE_ALLOW_RULE_ID_BASE = 810001;
+const SITE_ALLOW_RULE_ID_MAX = 820000;
 const EXCEPTION_RESOURCE_TYPES = [
   "script",
   "xmlhttprequest",
@@ -325,6 +327,10 @@ function normalizeSitePrefs(value) {
 
 function isBlockingEnabled(prefs) {
   return CATEGORY_ORDER.some((category) => prefs[category]);
+}
+
+function prefsEqual(left, right) {
+  return CATEGORY_ORDER.every((category) => Boolean(left?.[category]) === Boolean(right?.[category]));
 }
 
 async function getBlockedSites() {
@@ -682,7 +688,8 @@ async function disableAllProtection() {
       addRules: []
     });
   }
-  await syncTrackerExceptionRules(null);
+  await syncTrackerExceptionRules();
+  await syncSiteAllowRules();
   try {
     await chrome.action.setBadgeText({ text: "OFF" });
     await chrome.action.setBadgeBackgroundColor({ color: "#8a5a12" });
@@ -830,12 +837,29 @@ async function removeTrackerException(site, tracker) {
   return list;
 }
 
-async function syncTrackerExceptionRules(host) {
+async function collectSiteAllowHosts() {
+  const hosts = new Set();
+  for (const entry of await getWhitelist()) {
+    const host = normalizeHost(entry);
+    if (host) {
+      hosts.add(host);
+    }
+  }
+  const blockedSites = await getBlockedSites();
+  for (const [host, prefs] of Object.entries(blockedSites)) {
+    if (host && !isBlockingEnabled(normalizeSitePrefs(prefs))) {
+      hosts.add(normalizeHost(host));
+    }
+  }
+  return [...hosts];
+}
+
+async function syncSiteAllowRules() {
   const existing = await chrome.declarativeNetRequest.getSessionRules();
   const removeRuleIds = existing
-    .filter((rule) => rule.id >= EXCEPTION_RULE_ID_BASE)
+    .filter((rule) => rule.id >= SITE_ALLOW_RULE_ID_BASE && rule.id < SITE_ALLOW_RULE_ID_MAX)
     .map((rule) => rule.id);
-  if (await isPaused() || (await isWhitelisted(host))) {
+  if (await isPaused()) {
     if (removeRuleIds.length) {
       await chrome.declarativeNetRequest.updateSessionRules({
         removeRuleIds,
@@ -844,7 +868,41 @@ async function syncTrackerExceptionRules(host) {
     }
     return;
   }
-  const exceptions = await getTrackerExceptions();
+  const addRules = (await collectSiteAllowHosts()).slice(0, 200).map((host, index) => ({
+    id: SITE_ALLOW_RULE_ID_BASE + index,
+    priority: 100,
+    action: { type: "allow" },
+    condition: {
+      initiatorDomains: [host],
+      resourceTypes: EXCEPTION_RESOURCE_TYPES
+    }
+  }));
+  await chrome.declarativeNetRequest.updateSessionRules({
+    removeRuleIds,
+    addRules
+  });
+}
+
+async function syncTrackerExceptionRules() {
+  const existing = await chrome.declarativeNetRequest.getSessionRules();
+  const removeRuleIds = existing
+    .filter(
+      (rule) => rule.id >= EXCEPTION_RULE_ID_BASE && rule.id < SITE_ALLOW_RULE_ID_BASE
+    )
+    .map((rule) => rule.id);
+  if (await isPaused()) {
+    if (removeRuleIds.length) {
+      await chrome.declarativeNetRequest.updateSessionRules({
+        removeRuleIds,
+        addRules: []
+      });
+    }
+    return;
+  }
+  const allowHosts = new Set(await collectSiteAllowHosts());
+  const exceptions = (await getTrackerExceptions()).filter(
+    (entry) => !allowHosts.has(normalizeHost(entry.site))
+  );
   const addRules = exceptions.slice(0, 200).map((entry, index) => ({
     id: EXCEPTION_RULE_ID_BASE + index,
     priority: 4,
@@ -901,6 +959,10 @@ async function getSitePrefs(host) {
     return allCategoryPrefs(false);
   }
   const blockedSites = await getBlockedSites();
+  if (!host || !Object.prototype.hasOwnProperty.call(blockedSites, host)) {
+    const settings = await getSettings();
+    return { ...settings.defaultCategoryBlocking };
+  }
   return normalizeSitePrefs(blockedSites[host]);
 }
 
@@ -910,13 +972,34 @@ async function setSitePrefs(host, prefs) {
   }
   const blockedSites = await getBlockedSites();
   const normalized = normalizeSitePrefs(prefs);
-  if (isBlockingEnabled(normalized)) {
-    blockedSites[host] = normalized;
-  } else {
+  const settings = await getSettings();
+  if (prefsEqual(normalized, settings.defaultCategoryBlocking)) {
     delete blockedSites[host];
+  } else {
+    blockedSites[host] = normalized;
   }
   await chrome.storage.local.set({ blockedSites });
   return normalized;
+}
+
+async function enableRulesetsFromPrefs(prefs) {
+  const enableRulesetIds = [];
+  const disableRulesetIds = [];
+  for (const category of CATEGORY_ORDER) {
+    const id = RULESET_ID_BY_CATEGORY[category];
+    if (prefs[category]) {
+      enableRulesetIds.push(id);
+    } else {
+      disableRulesetIds.push(id);
+    }
+  }
+  if (!disableRulesetIds.includes("ruleset_threats")) {
+    enableRulesetIds.push("ruleset_threats");
+  }
+  await chrome.declarativeNetRequest.updateEnabledRulesets({
+    enableRulesetIds,
+    disableRulesetIds
+  });
 }
 
 async function installThreatRules() {
@@ -967,34 +1050,13 @@ async function applyBlockingForHost(host) {
     await disableAllProtection();
     return allCategoryPrefs(false);
   }
-  const trackerRulesets = CATEGORY_ORDER.map((category) => RULESET_ID_BY_CATEGORY[category]);
-  if (await isWhitelisted(host)) {
-    await chrome.declarativeNetRequest.updateEnabledRulesets({
-      disableRulesetIds: trackerRulesets
-    });
-    await installSurrogateRules(allCategoryPrefs(false));
-    await syncTrackerExceptionRules(host);
-    return allCategoryPrefs(false);
-  }
-
-  const prefs = host ? normalizeSitePrefs((await getBlockedSites())[host]) : allCategoryPrefs(false);
-  const enableRulesetIds = [];
-  const disableRulesetIds = [];
-  for (const category of CATEGORY_ORDER) {
-    const id = RULESET_ID_BY_CATEGORY[category];
-    if (prefs[category]) {
-      enableRulesetIds.push(id);
-    } else {
-      disableRulesetIds.push(id);
-    }
-  }
-  await chrome.declarativeNetRequest.updateEnabledRulesets({
-    enableRulesetIds,
-    disableRulesetIds
-  });
-  await installSurrogateRules(prefs);
-  await syncTrackerExceptionRules(host);
-  return prefs;
+  const settings = await getSettings();
+  await enableRulesetsFromPrefs(settings.defaultCategoryBlocking);
+  await installSurrogateRules(settings.defaultCategoryBlocking);
+  await installThreatRules();
+  await syncSiteAllowRules();
+  await syncTrackerExceptionRules();
+  return getSitePrefs(host);
 }
 
 function hostMatchesBlocked(host, blockedSets) {
@@ -1885,7 +1947,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const site = normalizeHost(message.site);
       const tracker = normalizeHost(message.tracker);
       const list = await addTrackerException(site, tracker);
-      await syncTrackerExceptionRules(site);
+      await syncTrackerExceptionRules();
       sendResponse({ ok: true, trackerExceptions: list });
     })();
     return true;
@@ -1896,7 +1958,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const site = normalizeHost(message.site);
       const tracker = normalizeHost(message.tracker);
       const list = await removeTrackerException(site, tracker);
-      await syncTrackerExceptionRules(site);
+      await syncTrackerExceptionRules();
       sendResponse({ ok: true, trackerExceptions: list });
     })();
     return true;
@@ -1939,8 +2001,9 @@ async function syncActiveTabBlocking() {
     }
     await installThreatRules();
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const host = tab ? hostnameFromUrl(tab.url || "") : "";
+    await applyBlockingForHost(host);
     if (tab) {
-      await applyBlockingForHost(hostnameFromUrl(tab.url || ""));
       await refreshTabUi(tab.id, tab.url);
     }
   } catch (error) {
